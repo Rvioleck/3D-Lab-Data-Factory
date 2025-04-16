@@ -183,3 +183,14 @@ export const deleteSession = async (sessionId) => {
     throw error.response?.data || { message: '网络错误，请稍后重试' }
   }
 }
+
+// 删除消息对（用户消息和对应的AI回复）
+export const deleteMessage = async (messageId) => {
+  try {
+    const response = await apiClient.delete(`/chat/message/${messageId}`)
+    return response.data
+  } catch (error) {
+    console.error('删除消息失败:', error)
+    throw error.response?.data || { message: '网络错误，请稍后重试' }
+  }
+}

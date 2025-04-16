@@ -1,6 +1,8 @@
-create database if not exists ai_3d;
+-- 创建数据库（如果不存在）
+CREATE DATABASE IF NOT EXISTS ai_3d;
 
-use ai_3d;
+-- 使用数据库
+USE ai_3d;
 
 -- 用户表创建脚本
 CREATE TABLE IF NOT EXISTS `user` (

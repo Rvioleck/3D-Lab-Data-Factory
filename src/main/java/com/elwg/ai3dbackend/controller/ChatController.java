@@ -158,6 +158,37 @@ public class ChatController {
     }
 
     /**
+     * 删除消息对（用户消息和对应的AI回复）
+     * <p>
+     * 删除指定的用户消息及其对应的AI回复。
+     * 如果指定的是AI回复消息，则会查找并删除对应的用户消息。
+     * </p>
+     *
+     * @param messageId 要删除的消息ID
+     * @param request HTTP请求对象，用于获取当前登录用户
+     * @return 包含删除结果的响应对象，删除成功返回true，否则返回false
+     */
+    @DeleteMapping("/message/{messageId}")
+    @ApiOperation(value = "删除消息", notes = "删除指定的消息对（用户消息和对应的AI回复）")
+    @ApiImplicitParam(name = "messageId", value = "消息ID", required = true, dataType = "String", paramType = "path")
+    public BaseResponse<Boolean> deleteMessage(@PathVariable String messageId, HttpServletRequest request) {
+        // 获取当前登录用户ID
+        Long userId = userService.getLoginUser(request).getId();
+
+        try {
+            Long messageIdLong = Long.parseLong(messageId);
+            boolean result = chatService.deleteMessagePair(messageIdLong, userId);
+            return ResultUtils.success(result);
+        } catch (NumberFormatException e) {
+            // 如果转换失败，返回失败
+            return ResultUtils.success(false);
+        } catch (IllegalArgumentException e) {
+            // 如果消息不存在或用户无权限删除，返回失败
+            return ResultUtils.success(false);
+        }
+    }
+
+    /**
      * 流式发送消息并获取AI回复（支持自动创建会话）
      * <p>
      * 当first=true时，会自动创建新会话并流式发送消息，此时sessionId可以不传。

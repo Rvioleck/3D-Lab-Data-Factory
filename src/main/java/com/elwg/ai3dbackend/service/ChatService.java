@@ -75,4 +75,18 @@ public interface ChatService {
      * @throws IllegalArgumentException 当sessionId为null且userId也为null时抛出
      */
     void streamMessage(Long sessionId, Long userId, String message, SseEmitter emitter);
+
+    /**
+     * 删除消息对（用户消息和对应的AI回复）
+     * <p>
+     * 删除指定的用户消息及其对应的AI回复。
+     * 如果指定的是AI回复消息，则会查找并删除对应的用户消息。
+     * </p>
+     *
+     * @param messageId 消息ID
+     * @param userId 用户ID（用于验证权限）
+     * @return 删除成功返回true，否则返回false
+     * @throws IllegalArgumentException 当消息不存在或用户无权限删除时抛出
+     */
+    boolean deleteMessagePair(Long messageId, Long userId);
 }

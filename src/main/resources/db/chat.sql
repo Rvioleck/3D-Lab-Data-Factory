@@ -1,3 +1,9 @@
+-- 创建数据库（如果不存在）
+CREATE DATABASE IF NOT EXISTS ai_3d;
+
+-- 使用数据库
+USE ai_3d;
+
 -- 对话会话表
 CREATE TABLE IF NOT EXISTS `chat_session` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -20,5 +26,6 @@ CREATE TABLE IF NOT EXISTS `chat_message` (
     `updateTime` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `isDelete` TINYINT NOT NULL DEFAULT 0 COMMENT '是否删除(0-未删, 1-已删)',
     PRIMARY KEY (`id`),
-    INDEX `idx_sessionId` (`sessionId`)
+    INDEX `idx_sessionId` (`sessionId`),
+    INDEX `idx_createTime` (`createTime`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '对话消息表';
