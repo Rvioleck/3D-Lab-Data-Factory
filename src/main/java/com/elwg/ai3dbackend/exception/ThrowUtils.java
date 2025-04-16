@@ -1,9 +1,12 @@
 package com.elwg.ai3dbackend.exception;
 
+import lombok.extern.slf4j.Slf4j;
+
 /**
  * 抛出异常工具类
  * 用于在条件满足时抛出指定的异常
  */
+@Slf4j
 public class ThrowUtils {
 
     /**
@@ -14,6 +17,7 @@ public class ThrowUtils {
      */
     public static void throwIf(boolean condition, RuntimeException runtimeException) {
         if (condition) {
+            log.error("抛出异常: " + runtimeException.getMessage());
             throw runtimeException;
         }
     }

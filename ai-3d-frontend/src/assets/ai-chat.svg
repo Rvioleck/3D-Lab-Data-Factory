@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="600" height="500" viewBox="0 0 600 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景圆形 -->
+  <circle cx="300" cy="250" r="200" fill="#E0E7FF" opacity="0.5"/>
+  
+  <!-- 机器人头部 -->
+  <rect x="220" y="120" width="160" height="140" rx="20" fill="#4F46E5"/>
+  
+  <!-- 机器人眼睛 -->
+  <circle cx="260" cy="170" r="15" fill="white"/>
+  <circle cx="340" cy="170" r="15" fill="white"/>
+  <circle cx="260" cy="170" r="8" fill="#111827"/>
+  <circle cx="340" cy="170" r="8" fill="#111827"/>
+  
+  <!-- 机器人天线 -->
+  <line x1="270" y1="120" x2="250" y2="90" stroke="#4F46E5" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="250" cy="85" r="8" fill="#10B981"/>
+  
+  <line x1="330" y1="120" x2="350" y2="90" stroke="#4F46E5" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="350" cy="85" r="8" fill="#10B981"/>
+  
+  <!-- 机器人嘴巴 -->
+  <rect x="260" y="210" width="80" height="10" rx="5" fill="white"/>
+  
+  <!-- 机器人身体 -->
+  <rect x="240" y="260" width="120" height="100" rx="15" fill="#4F46E5"/>
+  
+  <!-- 机器人手臂 -->
+  <line x1="240" y1="280" x2="180" y2="260" stroke="#4F46E5" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="170" cy="260" r="15" fill="#10B981"/>
+  
+  <line x1="360" y1="280" x2="420" y2="260" stroke="#4F46E5" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="430" cy="260" r="15" fill="#10B981"/>
+  
+  <!-- 机器人腿部 -->
+  <line x1="270" y1="360" x2="270" y2="420" stroke="#4F46E5" stroke-width="15" stroke-linecap="round"/>
+  <line x1="330" y1="360" x2="330" y2="420" stroke="#4F46E5" stroke-width="15" stroke-linecap="round"/>
+  
+  <!-- 机器人脚部 -->
+  <ellipse cx="270" cy="430" rx="20" ry="10" fill="#4F46E5"/>
+  <ellipse cx="330" cy="430" rx="20" ry="10" fill="#4F46E5"/>
+  
+  <!-- 对话气泡 -->
+  <path d="M450 180C450 167.85 459.85 158 472 158H528C540.15 158 550 167.85 550 180V220C550 232.15 540.15 242 528 242H490L470 262V242H472C459.85 242 450 232.15 450 220V180Z" fill="white" stroke="#4F46E5" stroke-width="3"/>
+  
+  <!-- 对话气泡内的文字符号 -->
+  <circle cx="472" cy="200" r="5" fill="#4F46E5"/>
+  <circle cx="500" cy="200" r="5" fill="#4F46E5"/>
+  <circle cx="528" cy="200" r="5" fill="#4F46E5"/>
+  
+  <!-- 装饰元素 -->
+  <circle cx="150" cy="150" r="10" fill="#10B981" opacity="0.6"/>
+  <circle cx="450" cy="350" r="15" fill="#10B981" opacity="0.6"/>
+  <circle cx="180" cy="380" r="8" fill="#4F46E5" opacity="0.6"/>
+  <circle cx="480" cy="120" r="12" fill="#4F46E5" opacity="0.6"/>
+</svg>
