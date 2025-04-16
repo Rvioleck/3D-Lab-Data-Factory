@@ -286,7 +286,7 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
-    public boolean deleteMessagePair(Long messageId, Long userId) {
+    public boolean deleteMessage(Long messageId, Long userId) {
         // 1. 查询消息是否存在
         ChatMessage message = chatMessageMapper.selectById(messageId);
         if (message == null || message.getIsDelete() == 1) {
@@ -299,64 +299,7 @@ public class ChatServiceImpl implements ChatService {
             throw new IllegalArgumentException("无权删除此消息");
         }
 
-        // 3. 根据消息角色执行不同的删除逻辑
-        if ("user".equals(message.getRole())) {
-            // 如果是用户消息，找到并删除对应的AI回复
-            return deleteUserMessageAndResponse(message);
-        } else if ("assistant".equals(message.getRole())) {
-            // 如果是AI回复，找到并删除对应的用户消息
-            return deleteAIResponseAndUserMessage(message);
-        } else {
-            // 其他类型消息，直接删除
-            return chatMessageMapper.deleteById(messageId) > 0;
-        }
-    }
-
-    /**
-     * 删除用户消息及其对应的AI回复
-     */
-    private boolean deleteUserMessageAndResponse(ChatMessage userMessage) {
-        // 1. 查找紧随其后的AI回复
-        QueryWrapper<ChatMessage> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("sessionId", userMessage.getSessionId())
-                    .eq("role", "assistant")
-                    .eq("isDelete", 0)
-                    .gt("createTime", userMessage.getCreateTime())
-                    .orderByAsc("createTime")
-                    .last("LIMIT 1");
-
-        ChatMessage aiResponse = chatMessageMapper.selectOne(queryWrapper);
-
-        // 2. 如果找到AI回复，则删除
-        if (aiResponse != null) {
-            chatMessageMapper.deleteById(aiResponse.getId());
-        }
-
-        // 3. 删除用户消息
-        return chatMessageMapper.deleteById(userMessage.getId()) > 0;
-    }
-
-    /**
-     * 删除AI回复及其对应的用户消息
-     */
-    private boolean deleteAIResponseAndUserMessage(ChatMessage aiResponse) {
-        // 1. 查找其前面的用户消息
-        QueryWrapper<ChatMessage> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("sessionId", aiResponse.getSessionId())
-                    .eq("role", "user")
-                    .eq("isDelete", 0)
-                    .lt("createTime", aiResponse.getCreateTime())
-                    .orderByDesc("createTime")
-                    .last("LIMIT 1");
-
-        ChatMessage userMessage = chatMessageMapper.selectOne(queryWrapper);
-
-        // 2. 如果找到用户消息，则删除
-        if (userMessage != null) {
-            chatMessageMapper.deleteById(userMessage.getId());
-        }
-
-        // 3. 删除AI回复
-        return chatMessageMapper.deleteById(aiResponse.getId()) > 0;
+        // 3. 直接删除指定消息
+        return chatMessageMapper.deleteById(messageId) > 0;
     }
 }

@@ -3,21 +3,27 @@ package com.elwg.ai3dbackend.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.elwg.ai3dbackend.constant.UserConstant;
 import com.elwg.ai3dbackend.exception.BusinessException;
 import com.elwg.ai3dbackend.exception.ErrorCode;
 import com.elwg.ai3dbackend.exception.ThrowUtils;
 import com.elwg.ai3dbackend.mapper.UserMapper;
+import com.elwg.ai3dbackend.model.dto.UserQueryRequest;
 import com.elwg.ai3dbackend.model.entity.User;
 import com.elwg.ai3dbackend.model.enums.UserRoleEnum;
 import com.elwg.ai3dbackend.model.vo.LoginUserVO;
+import com.elwg.ai3dbackend.model.vo.UserVO;
 import com.elwg.ai3dbackend.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.Date;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 用户服务实现类
@@ -69,14 +75,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     /**
      * 用户登录验证
-     * 验证用户账号和密码，返回脱敏后的用户信息
+     * 验证用户账号和密码，返回脱敏后的用户视图对象
      * 该方法仅在内部使用，不对外暴露
      *
      * @param userAccount  用户账号
      * @param userPassword 用户密码
-     * @return 脱敏后的用户信息
+     * @return 脱敏后的用户视图对象
      */
-    private User userLoginVerify(String userAccount, String userPassword) {
+    private LoginUserVO userLoginVerify(String userAccount, String userPassword) {
         // 1. 校验参数
         ThrowUtils.throwIf(StrUtil.hasBlank(userAccount, userPassword),
                 ErrorCode.PARAMS_ERROR, "参数为空");
@@ -116,13 +122,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public LoginUserVO userLogin(String userAccount, String userPassword, HttpServletRequest request) {
         // 1. 调用登录验证方法获取脱敏后的用户信息
-        User safetyUser = userLoginVerify(userAccount, userPassword);
-        ThrowUtils.throwIf(safetyUser == null, ErrorCode.SYSTEM_ERROR, "登陆失败");
+        LoginUserVO loginUserVO = userLoginVerify(userAccount, userPassword);
+        ThrowUtils.throwIf(loginUserVO == null, ErrorCode.SYSTEM_ERROR, "登陆失败");
         // 2. 记录用户的登录态
-        request.getSession().setAttribute(UserConstant.USER_LOGIN_STATE, safetyUser);
-        // 3. 将脱敏后的用户信息转换为LoginUserVO对象
-        LoginUserVO loginUserVO = new LoginUserVO();
-        BeanUtil.copyProperties(safetyUser, loginUserVO);
+        request.getSession().setAttribute(UserConstant.USER_LOGIN_STATE, loginUserVO);
+        // 3. 直接返回用户视图对象
         return loginUserVO;
     }
 
@@ -139,7 +143,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 1. 从会话中获取用户登录状态
         User user = (User) request.getSession().getAttribute(UserConstant.USER_LOGIN_STATE);
         ThrowUtils.throwIf(user == null || user.getId() == null, ErrorCode.NOT_LOGIN_ERROR);
-        // 2. 防止单词会话中用户信息已经修改了，再查询一次数据库
+        // 2. 防止单次会话中用户信息已经修改了，再查询一次数据库
         user = this.getById(user.getId());
         ThrowUtils.throwIf(user == null, ErrorCode.NOT_LOGIN_ERROR);
         return user;
@@ -147,27 +151,27 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     /**
      * 用户脱敏
-     * 移除敏感信息，如密码等，返回可安全传输的用户对象
+     * 移除敏感信息，如密码等，返回可安全传输的用户视图对象
      * 保留用户ID、账号、名称、头像、角色、简介、创建时间和更新时间
      *
      * @param originUser 原始用户对象
-     * @return 脱敏后的用户对象
+     * @return 脱敏后的用户视图对象
      */
     @Override
-    public User getSafetyUser(User originUser) {
+    public LoginUserVO getSafetyUser(User originUser) {
         if (originUser == null) {
             return null;
         }
-        User safetyUser = new User();
-        safetyUser.setId(originUser.getId());
-        safetyUser.setUserAccount(originUser.getUserAccount());
-        safetyUser.setUserName(originUser.getUserName());
-        safetyUser.setUserAvatar(originUser.getUserAvatar());
-        safetyUser.setUserRole(originUser.getUserRole());
-        safetyUser.setUserProfile(originUser.getUserProfile());
-        safetyUser.setCreateTime(originUser.getCreateTime());
-        safetyUser.setUpdateTime(originUser.getUpdateTime());
-        return safetyUser;
+        LoginUserVO loginUserVO = new LoginUserVO();
+        loginUserVO.setId(originUser.getId());
+        loginUserVO.setUserAccount(originUser.getUserAccount());
+        loginUserVO.setUserName(originUser.getUserName());
+        loginUserVO.setUserAvatar(originUser.getUserAvatar());
+        loginUserVO.setUserRole(originUser.getUserRole());
+        loginUserVO.setUserProfile(originUser.getUserProfile());
+        loginUserVO.setCreateTime(originUser.getCreateTime());
+        loginUserVO.setUpdateTime(originUser.getUpdateTime());
+        return loginUserVO;
     }
 
     /**
@@ -178,7 +182,238 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      * @return 加密后的密码
      */
     private String getEncryptPassword(String userPassword) {
-        final String SALT = "elwg";
+        // 定义盐值，提高密码安全性
+        final String SALT = "elwg_ai3d_salt";
+        // 使用MD5加密，将盐值添加到密码前后
         return DigestUtils.md5DigestAsHex((SALT + userPassword + SALT).getBytes());
+    }
+
+    /**
+     * 对密码进行加密
+     * 使用系统的加密算法对密码进行加密
+     *
+     * @param password 原始密码
+     * @return 加密后的密码
+     */
+    @Override
+    public String encryptPassword(String password) {
+        // 参数校验
+        ThrowUtils.throwIf(StrUtil.isBlank(password), ErrorCode.PARAMS_ERROR, "密码不能为空");
+        return getEncryptPassword(password);
+    }
+
+    /**
+     * 用户退出
+     * 清除用户登录状态
+     *
+     * @param request HTTP请求对象，用于清除会话信息
+     * @return 退出结果，true 表示成功，false 表示失败
+     */
+    @Override
+    public boolean userLogout(HttpServletRequest request) {
+        if (request.getSession().getAttribute(UserConstant.USER_LOGIN_STATE) == null) {
+            return false;
+        }
+        // 移除登录态
+        request.getSession().removeAttribute(UserConstant.USER_LOGIN_STATE);
+        return true;
+    }
+
+    /**
+     * 获取脱敏后的用户信息
+     * 根据ID获取用户信息，并进行脱敏处理
+     *
+     * @param id 用户ID
+     * @return 脱敏后的用户视图对象
+     */
+    @Override
+    public UserVO getUser(Long id) {
+        if (id == null || id <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户ID不合法");
+        }
+        User user = this.getById(id);
+        ThrowUtils.throwIf(user == null, ErrorCode.NOT_FOUND_ERROR, "用户不存在");
+        return getUserVO(user);
+    }
+
+    /**
+     * 获取脱敏后的用户信息
+     * 将 User 对象转换为 UserVO 对象，移除敏感信息
+     *
+     * @param user 原始用户对象
+     * @return 脱敏后的用户视图对象
+     */
+    @Override
+    public UserVO getUserVO(User user) {
+        if (user == null) {
+            return null;
+        }
+
+        // 创建新的用户视图对象
+        UserVO userVO = new UserVO();
+
+        // 只复制非敏感字段，确保密码等敏感信息不会被复制
+        userVO.setId(user.getId());
+        userVO.setUserAccount(user.getUserAccount());
+        userVO.setUserName(user.getUserName());
+        userVO.setUserAvatar(user.getUserAvatar());
+        userVO.setUserProfile(user.getUserProfile());
+        userVO.setUserRole(user.getUserRole());
+        userVO.setCreateTime(user.getCreateTime());
+        userVO.setUpdateTime(user.getUpdateTime());
+
+        return userVO;
+    }
+
+    /**
+     * 获取用户列表（分页）
+     * 根据查询条件获取用户列表，并进行脱敏处理
+     *
+     * @param userQueryRequest 用户查询请求
+     * @return 分页用户列表（脱敏）
+     */
+    @Override
+    public Page<UserVO> listUserVOByPage(UserQueryRequest userQueryRequest) {
+        // 参数校验
+        ThrowUtils.throwIf(userQueryRequest == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
+
+        long current = userQueryRequest.getCurrent();
+        long pageSize = userQueryRequest.getPageSize();
+
+        // 限制分页大小，防止查询过多数据
+        ThrowUtils.throwIf(pageSize <= 0, ErrorCode.PARAMS_ERROR, "分页大小必须大于0");
+        ThrowUtils.throwIf(pageSize > 50, ErrorCode.PARAMS_ERROR, "分页大小不能超过50");
+        ThrowUtils.throwIf(current <= 0, ErrorCode.PARAMS_ERROR, "当前页码必须大于0");
+
+        // 构建查询条件
+        QueryWrapper<User> queryWrapper = getQueryWrapper(userQueryRequest);
+
+        // 创建分页对象
+        Page<User> page = new Page<>(current, pageSize);
+        // 设置是否查询总记录数
+        page.setSearchCount(true);
+        // 设置是否优化计数SQL
+        page.setOptimizeCountSql(true);
+
+        // 执行分页查询
+        Page<User> userPage = this.page(page, queryWrapper);
+
+        // 将 User 列表转换为 UserVO 列表
+        Page<UserVO> userVOPage = new Page<>(userPage.getCurrent(), userPage.getSize(), userPage.getTotal());
+        List<UserVO> userVOList = userPage.getRecords().stream()
+                .map(this::getUserVO)
+                .collect(Collectors.toList());
+        userVOPage.setRecords(userVOList);
+
+        // 复制分页相关属性
+        userVOPage.setPages(userPage.getPages());
+        userVOPage.setCountId(userPage.getCountId());
+        userVOPage.setMaxLimit(userPage.getMaxLimit());
+        userVOPage.setSearchCount(userPage.isSearchCount());
+        userVOPage.setOptimizeCountSql(userPage.isOptimizeCountSql());
+        userVOPage.setOptimizeJoinOfCountSql(userPage.isOptimizeJoinOfCountSql());
+
+        return userVOPage;
+    }
+
+    /**
+     * 根据条件构建用户查询条件
+     * 将 UserQueryRequest 转换为 QueryWrapper
+     *
+     * @param userQueryRequest 用户查询请求
+     * @return 查询条件包装器
+     */
+    @Override
+    public QueryWrapper<User> getQueryWrapper(UserQueryRequest userQueryRequest) {
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+
+        if (userQueryRequest == null) {
+            // 默认排序为创建时间降序
+            queryWrapper.orderByDesc("createTime");
+            return queryWrapper;
+        }
+
+        // 提取查询条件
+        Long id = userQueryRequest.getId();
+        String userAccount = userQueryRequest.getUserAccount();
+        String userName = userQueryRequest.getUserName();
+        String userRole = userQueryRequest.getUserRole();
+        Date createTimeStart = userQueryRequest.getCreateTimeStart();
+        Date createTimeEnd = userQueryRequest.getCreateTimeEnd();
+        String sortField = userQueryRequest.getSortField();
+        String sortOrder = userQueryRequest.getSortOrder();
+
+        // 根据传入的参数构建查询条件
+        // 1. ID 精确查询
+        queryWrapper.eq(id != null && id > 0, "id", id);
+
+        // 2. 用户账号模糊查询（包含）
+        queryWrapper.like(StrUtil.isNotBlank(userAccount), "userAccount", userAccount);
+
+        // 3. 用户名模糊查询（包含）
+        queryWrapper.like(StrUtil.isNotBlank(userName), "userName", userName);
+
+        // 4. 用户角色精确查询
+        queryWrapper.eq(StrUtil.isNotBlank(userRole), "userRole", userRole);
+
+        // 5. 创建时间范围查询
+        if (createTimeStart != null && createTimeEnd != null) {
+            // 确保开始时间不晚于结束时间
+            if (createTimeStart.after(createTimeEnd)) {
+                Date temp = createTimeStart;
+                createTimeStart = createTimeEnd;
+                createTimeEnd = temp;
+            }
+            queryWrapper.between("createTime", createTimeStart, createTimeEnd);
+        } else {
+            // 如果只有开始时间或结束时间，则分别处理
+            queryWrapper.ge(createTimeStart != null, "createTime", createTimeStart);
+            queryWrapper.le(createTimeEnd != null, "createTime", createTimeEnd);
+        }
+
+        // 6. 排除已删除的用户
+        queryWrapper.eq("isDelete", 0);
+
+        // 7. 排序处理
+        // 默认按创建时间降序排序
+        queryWrapper.orderByDesc("createTime");
+
+        // 如果有指定排序字段，则按指定字段排序
+        if (StrUtil.isNotBlank(sortField)) {
+            // 验证排序字段是否合法（防止SQL注入）
+            boolean isValidField = checkValidSortField(sortField);
+            if (isValidField) {
+                boolean isAsc = "ascend".equals(sortOrder);
+                queryWrapper.orderBy(true, isAsc, sortField);
+            } else {
+                log.warn("非法排序字段: {}", sortField);
+            }
+        }
+
+        return queryWrapper;
+    }
+
+    /**
+     * 检查排序字段是否合法
+     * 防止SQL注入攻击
+     *
+     * @param sortField 排序字段
+     * @return 是否合法
+     */
+    private boolean checkValidSortField(String sortField) {
+        // 定义允许的排序字段列表
+        String[] validFields = {
+            "id", "userAccount", "userName", "userRole", "userProfile",
+            "createTime", "updateTime", "editTime"
+        };
+
+        // 检查排序字段是否在允许的列表中
+        for (String validField : validFields) {
+            if (validField.equals(sortField)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

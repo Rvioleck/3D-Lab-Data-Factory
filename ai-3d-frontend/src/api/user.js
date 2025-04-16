@@ -57,3 +57,21 @@ export const getLoginUser = async () => {
     throw error.response?.data || { message: '网络错误，请稍后重试' }
   }
 }
+
+// 用户退出
+export const logout = async () => {
+  try {
+    console.log('发送用户退出请求')
+    const response = await apiClient.post('/user/logout', {}, {
+      withCredentials: true, // 确保发送请求时带上cookie
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    console.log('用户退出响应:', response.data)
+    return response.data
+  } catch (error) {
+    console.error('用户退出失败:', error)
+    throw error.response?.data || { message: '网络错误，请稍后重试' }
+  }
+}

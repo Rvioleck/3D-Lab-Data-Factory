@@ -28,7 +28,7 @@ const routes = [
     path: '/chat',
     name: 'Chat',
     component: () => import('../views/ChatView.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, requiresAdmin: true }
   },
   {
     path: '/health',
@@ -69,11 +69,17 @@ router.beforeEach(async (to, from, next) => {
 
   // 重新获取登录状态（可能已经更新）
   const finalLoginStatus = store.getters['user/isLoggedIn']
+  const isAdmin = store.getters['user/isAdmin']
 
   // 如果需要登录但用户未登录，重定向到登录页面
   if (to.meta.requiresAuth && !finalLoginStatus) {
     console.log('页面需要登录权限但用户未登录，重定向到登录页面')
     next('/login')
+  }
+  // 如果需要管理员权限但用户不是管理员，重定向到首页
+  else if (to.meta.requiresAdmin && !isAdmin) {
+    console.log('页面需要管理员权限但用户不是管理员，重定向到首页')
+    next('/home')
   }
   // 如果用户已登录但访问登录页面，重定向到主页
   else if (finalLoginStatus && (to.path === '/login' || to.path === '/register')) {

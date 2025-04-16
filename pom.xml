@@ -28,6 +28,18 @@
             <artifactId>mybatis-plus-boot-starter</artifactId>
             <version>3.5.11</version>
         </dependency>
+        <!-- MyBatis Plus 分页插件依赖 -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-extension</artifactId>
+            <version>3.5.11</version>
+        </dependency>
+        <!-- JSqlParser 依赖，MyBatis Plus 3.5.9+版本分页插件需要 -->
+        <dependency>
+            <groupId>com.github.jsqlparser</groupId>
+            <artifactId>jsqlparser</artifactId>
+            <version>4.6</version>
+        </dependency>
         <!-- 工具库：https://doc.hutool.cn/pages/index -->
         <dependency>
             <groupId>cn.hutool</groupId>

@@ -1,5 +1,19 @@
 <template>
   <div class="chat-view">
+    <!-- 非管理员用户显示无权限提示 -->
+    <div v-if="!isAdmin" class="no-permission-container">
+      <div class="text-center">
+        <i class="bi bi-shield-lock text-danger" style="font-size: 5rem;"></i>
+        <h2 class="mt-4">权限不足</h2>
+        <p class="text-muted mt-3">很抱歉，聊天功能当前仅开放给管理员使用。</p>
+        <router-link to="/home" class="btn btn-primary mt-3">
+          <i class="bi bi-house me-2"></i>返回首页
+        </router-link>
+      </div>
+    </div>
+
+    <!-- 管理员用户显示聊天界面 -->
+    <div v-else class="chat-container">
     <div class="row h-100 g-0">
       <!-- 会话列表侧边栏 -->
       <div class="col-md-3 chat-sidebar">
@@ -187,8 +201,7 @@
       </div>
       </div>
     </div>
-
-
+    </div>
   </div>
 </template>
 
@@ -211,6 +224,9 @@ export default {
     const store = useStore()
     const messagesContainer = ref(null)
     const messageTextarea = ref(null)
+
+    // 检查用户是否为管理员
+    const isAdmin = computed(() => store.getters['user/isAdmin'])
 
     // 会话相关
     const isLoadingSessions = ref(false)
@@ -524,6 +540,7 @@ export default {
 
 
     return {
+      isAdmin,
       sessions,
       currentSessionId,
       currentSessionName,
@@ -556,6 +573,18 @@ export default {
 /* 聊天页面布局 */
 .chat-view {
   height: calc(100vh - 100px);
+}
+
+/* 无权限提示容器 */
+.no-permission-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  padding: 2rem;
+  background-color: var(--bg-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
 }
 
 /* 侧边栏样式 */

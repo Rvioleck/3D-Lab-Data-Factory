@@ -184,7 +184,7 @@ export const deleteSession = async (sessionId) => {
   }
 }
 
-// 删除消息对（用户消息和对应的AI回复）
+// 删除用户消息及其对应的AI回复（只能删除用户消息）
 export const deleteMessage = async (messageId) => {
   try {
     const response = await apiClient.delete(`/chat/message/${messageId}`)

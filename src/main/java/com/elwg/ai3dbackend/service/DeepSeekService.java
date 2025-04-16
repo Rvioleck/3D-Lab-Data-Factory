@@ -13,6 +13,8 @@ import javax.annotation.Resource;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -53,13 +55,17 @@ public class DeepSeekService {
      * @return AI响应内容
      */
     public String chatCompletion(List<Map<String, String>> messages) {
-        log.info("DeepSeek API call: {}", messages);
+        log.info("DeepSeek API call with {} messages", messages.size());
+
+        // 合并连续的同类型消息
+        List<Map<String, String>> mergedMessages = mergeConsecutiveMessages(messages);
+        log.info("After merging, {} messages remain", mergedMessages.size());
 
         try {
             // 构建请求体
             ObjectNode requestBody = objectMapper.createObjectNode();
             requestBody.put("model", model);
-            requestBody.put("messages", objectMapper.valueToTree(messages));
+            requestBody.put("messages", objectMapper.valueToTree(mergedMessages));
             requestBody.put("temperature", temperature);
             requestBody.put("max_tokens", maxTokens);
 
@@ -90,18 +96,57 @@ public class DeepSeekService {
     }
 
     /**
+     * 合并连续的同类型消息
+     * 在API调用前合并连续的user或assistant消息
+     *
+     * @param messages 原始消息列表
+     * @return 合并后的消息列表
+     */
+    private List<Map<String, String>> mergeConsecutiveMessages(List<Map<String, String>> messages) {
+        if (messages == null || messages.size() < 2) {
+            return messages;
+        }
+
+        List<Map<String, String>> result = new ArrayList<>();
+        Map<String, String> currentMessage = new HashMap<>(messages.get(0));
+        result.add(currentMessage);
+
+        for (int i = 1; i < messages.size(); i++) {
+            Map<String, String> nextMessage = messages.get(i);
+
+            // 如果当前消息和下一条消息角色相同，合并内容
+            if (currentMessage.get("role").equals(nextMessage.get("role"))) {
+                String mergedContent = currentMessage.get("content") + "\n\n" + nextMessage.get("content");
+                currentMessage.put("content", mergedContent);
+                log.debug("Merged consecutive {} messages", currentMessage.get("role"));
+            } else {
+                // 角色不同，添加为新消息
+                currentMessage = new HashMap<>(nextMessage);
+                result.add(currentMessage);
+            }
+        }
+
+        return result;
+    }
+
+    /**
      * 流式调用DeepSeek API
      *
      * @param messages 消息列表
      * @param emitter SSE发射器
      */
     public void streamChatCompletion(List<Map<String, String>> messages, SseEmitter emitter) {
-        log.info("DeepSeek Stream API call: {}", messages);
+        log.info("DeepSeek Stream API call with {} messages", messages.size());
+
+        // 合并连续的同类型消息
+        List<Map<String, String>> mergedMessages = mergeConsecutiveMessages(messages);
+        log.info("After merging, {} messages remain for streaming", mergedMessages.size());
+
         try {
             // 构建请求体
             ObjectNode requestBody = objectMapper.createObjectNode();
             requestBody.put("model", model);
-            requestBody.put("messages", objectMapper.valueToTree(messages));
+            requestBody.put("messages", objectMapper.valueToTree(mergedMessages));
             requestBody.put("temperature", temperature);
             requestBody.put("max_tokens", maxTokens);
             requestBody.put("stream", true);

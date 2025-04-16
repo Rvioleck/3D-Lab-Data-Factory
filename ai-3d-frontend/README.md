@@ -1,4 +1,4 @@
-# AI 3D Backend 前端测试项目
+# AI 3D Frontend 项目
 
 这是一个用于测试 AI 3D Backend 接口的前端项目，特别关注流式响应功能的正确性。
 
@@ -102,3 +102,4 @@ export default defineConfig({
 1. 确保后端服务已启动并运行在 `http://localhost:8123`
 2. 如果后端服务地址有变化，请修改 `vite.config.js` 中的代理配置
 3. 流式响应测试需要后端正确实现 SSE (Server-Sent Events) 协议
+4. 详细API文档请参考后端项目中的 `API.md`

@@ -16,7 +16,7 @@
                 <i class="bi bi-house me-1"></i> 首页
               </router-link>
             </li>
-            <li class="nav-item">
+            <li class="nav-item" v-if="isAdmin">
               <router-link class="nav-link" to="/chat">
                 <i class="bi bi-chat me-1"></i> 聊天
               </router-link>
@@ -83,6 +83,7 @@ export default {
     // 用户状态
     const isLoggedIn = computed(() => store.getters['user/isLoggedIn'])
     const currentUser = computed(() => store.getters['user/currentUser'])
+    const isAdmin = computed(() => store.getters['user/isAdmin'])
 
     // 主题设置
     const isDarkTheme = ref(localStorage.getItem('theme') === 'dark')
@@ -128,6 +129,7 @@ export default {
     return {
       isLoggedIn,
       currentUser,
+      isAdmin,
       isDarkTheme,
       toggleTheme,
       logout

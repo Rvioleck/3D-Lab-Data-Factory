@@ -1,4 +1,4 @@
-import { login, register, getLoginUser } from '../../api/user'
+import { login, register, getLoginUser, logout as apiLogout } from '../../api/user'
 
 const state = {
   currentUser: null,
@@ -7,7 +7,8 @@ const state = {
 
 const getters = {
   isLoggedIn: state => !!state.currentUser,
-  currentUser: state => state.currentUser
+  currentUser: state => state.currentUser,
+  isAdmin: state => state.currentUser && state.currentUser.userRole === 'admin'
 }
 
 const actions = {
@@ -67,9 +68,27 @@ const actions = {
     }
   },
 
-  logout({ commit }) {
-    commit('SET_CURRENT_USER', null)
-    localStorage.removeItem('token')
+  async logout({ commit }) {
+    try {
+      console.log('开始退出请求')
+      const response = await apiLogout()
+
+      if (response.code === 0) {
+        console.log('退出成功')
+        commit('SET_CURRENT_USER', null)
+        localStorage.removeItem('token')
+        return Promise.resolve(true)
+      } else {
+        console.error('退出失败，服务器返回错误:', response.message)
+        return Promise.reject(response.message || '退出失败')
+      }
+    } catch (error) {
+      console.error('退出请求异常:', error)
+      // 即使请求失败，也清除本地状态
+      commit('SET_CURRENT_USER', null)
+      localStorage.removeItem('token')
+      return Promise.reject(error.message || '退出失败')
+    }
   }
 }
 
