@@ -3,9 +3,9 @@
     <div class="container">
       <div class="row align-items-center min-vh-75">
         <div class="col-lg-6 py-5">
-          <h1 class="display-4 fw-bold mb-4">AI 智能助手</h1>
+          <h1 class="display-4 fw-bold mb-4">AI 3D 平台</h1>
           <p class="lead mb-4">
-            基于先进的人工智能技术，为您提供智能对话服务。无论是日常聊天、学习辅助还是专业咨询，都能给您带来优质的体验。
+            基于先进的人工智能技术，为您提供全方位的 3D 资源管理和智能对话服务。支持 3D 模型管理、智能对话以及更多功能。
           </p>
           <div class="features mb-5">
             <div class="feature-item">
@@ -19,6 +19,10 @@
             <div class="feature-item">
               <i class="bi bi-chat-square-text-fill text-primary"></i>
               <span>智能对话</span>
+            </div>
+            <div class="feature-item">
+              <i class="bi bi-box-fill text-primary"></i>
+              <span>3D 资源管理</span>
             </div>
           </div>
           <div class="d-flex flex-wrap gap-3">
@@ -37,18 +41,18 @@
         </div>
       </div>
     </div>
-    
+
     <div class="bg-light py-5 mt-4">
       <div class="container">
         <div class="row justify-content-center">
           <div class="col-lg-8 text-center">
-            <h2 class="mb-4">为什么选择我们的AI助手？</h2>
+            <h2 class="mb-4">为什么选择我们的 AI 3D 平台？</h2>
             <p class="lead mb-5">
-              我们的AI助手采用最新的大语言模型技术，能够理解复杂的问题，提供准确的回答，让您的交流更加高效。
+              我们的平台集成了最新的大语言模型技术和 3D 资源管理功能，为您提供全方位的服务支持。
             </p>
           </div>
         </div>
-        
+
         <div class="row g-4">
           <div class="col-md-4">
             <div class="card h-100 border-0 shadow-sm">
@@ -56,14 +60,14 @@
                 <div class="feature-icon mb-3">
                   <i class="bi bi-cpu"></i>
                 </div>
-                <h4>智能理解</h4>
+                <h4>3D 资源管理</h4>
                 <p class="text-muted">
-                  先进的自然语言处理能力，能够理解您的意图，提供精准的回答。
+                  全面的 3D 模型和资源管理功能，支持上传、分类和组织您的 3D 资产。
                 </p>
               </div>
             </div>
           </div>
-          
+
           <div class="col-md-4">
             <div class="card h-100 border-0 shadow-sm">
               <div class="card-body p-4 text-center">
@@ -77,7 +81,7 @@
               </div>
             </div>
           </div>
-          
+
           <div class="col-md-4">
             <div class="card h-100 border-0 shadow-sm">
               <div class="card-body p-4 text-center">
@@ -94,13 +98,13 @@
         </div>
       </div>
     </div>
-    
+
     <div class="container py-5">
       <div class="row justify-content-center">
         <div class="col-lg-8 text-center">
           <h2 class="mb-4">准备好开始了吗？</h2>
           <p class="lead mb-5">
-            立即注册账号，体验智能AI助手带来的便捷服务。
+            立即注册账号，体验 AI 3D 平台带来的全方位服务。
           </p>
           <div class="d-flex justify-content-center gap-3">
             <router-link to="/register" class="btn btn-primary btn-lg rounded-pill">

@@ -44,12 +44,14 @@ export const listMessages = async (sessionId) => {
   }
 }
 
-// 发送消息
-export const sendMessage = async (sessionId, message) => {
+// 发送消息（支持自动创建会话）
+export const sendMessage = async (message, options = {}) => {
   try {
+    const { sessionId, first = false } = options
     const response = await apiClient.post('/chat/message', {
       sessionId,
-      message
+      message,
+      first
     })
     return response.data
   } catch (error) {
@@ -58,10 +60,26 @@ export const sendMessage = async (sessionId, message) => {
   }
 }
 
-// 流式发送消息
-export const streamChat = async (sessionId, message, callbacks) => {
+// 兼容旧版本的自动创建会话并发送消息
+export const sendMessageWithAutoSession = async (message) => {
+  return sendMessage(message, { first: true })
+}
+
+// 流式发送消息（支持自动创建会话）
+export const streamChat = async (message, options = {}, callbacks) => {
   try {
+    const { sessionId, first = false } = options
     const { onMessage, onDone, onError } = callbacks
+
+    // 使用AbortController来处理请求取消
+    const controller = new AbortController()
+    const signal = controller.signal
+
+    // 设置超时处理
+    const timeoutId = setTimeout(() => {
+      controller.abort()
+      onError && onError(new Error('请求超时'))
+    }, 30000) // 30秒超时
 
     const response = await fetch(`${API_URL}/chat/stream`, {
       method: 'POST',
@@ -70,10 +88,15 @@ export const streamChat = async (sessionId, message, callbacks) => {
       },
       body: JSON.stringify({
         sessionId,
-        message
+        message,
+        first
       }),
-      credentials: 'include' // 允许跨域请求携带cookie
+      credentials: 'include', // 允许跨域请求携带cookie
+      signal // 添加信号以支持取消
     })
+
+    // 清除超时定时器
+    clearTimeout(timeoutId)
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`)
@@ -82,23 +105,22 @@ export const streamChat = async (sessionId, message, callbacks) => {
     const reader = response.body.getReader()
     const decoder = new TextDecoder()
 
-    while (true) {
-      const { value, done } = await reader.read()
-      if (done) break
+    // 使用更高效的数据处理方式
+    let buffer = ''
 
-      const chunk = decoder.decode(value)
-      console.log('Received chunk:', chunk) // 调试日志
+    const processText = (text) => {
+      buffer += text
+      const lines = buffer.split('\n')
 
-      // 处理数据块
-      const lines = chunk.split('\n')
+      // 保留最后一行（可能不完整）
+      buffer = lines.pop() || ''
 
       for (const line of lines) {
         if (!line.trim()) continue
 
         // 处理结束标记
         if (line === '[DONE]' || line === 'data: [DONE]') {
-          onDone && onDone()
-          return
+          return true // 表示完成
         }
 
         // 处理SSE格式的数据
@@ -114,14 +136,41 @@ export const streamChat = async (sessionId, message, callbacks) => {
           onMessage && onMessage(line)
         }
       }
+      return false // 表示未完成
     }
 
-    onDone && onDone()
+    try {
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value, { stream: true })
+        const isComplete = processText(chunk)
+        if (isComplete) break
+      }
+
+      // 处理缓冲区中的最后内容
+      if (buffer.trim()) {
+        processText(buffer + '\n')
+      }
+
+      onDone && onDone()
+    } catch (readError) {
+      console.error('读取流失败:', readError)
+      onError && onError(readError)
+    } finally {
+      reader.releaseLock()
+    }
   } catch (error) {
     console.error('流式发送消息失败:', error)
     onError && onError(error)
     throw error
   }
+}
+
+// 兼容旧版本的自动创建会话并流式发送消息
+export const streamChatWithAutoSession = async (message, callbacks) => {
+  return streamChat(message, { first: true }, callbacks)
 }
 
 // 删除会话

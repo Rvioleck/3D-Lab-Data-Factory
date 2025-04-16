@@ -1,4 +1,4 @@
-import { createSession, listSessions, listMessages, deleteSession, sendMessage } from '../../api/chat'
+import { createSession, listSessions, listMessages, deleteSession, sendMessage, streamChat } from '../../api/chat'
 
 const state = {
   sessions: [],
@@ -29,6 +29,42 @@ const actions = {
       }
     } catch (error) {
       return Promise.reject(error.message || '创建会话失败')
+    }
+  },
+
+  async sendMessageWithAutoSession({ commit }, message) {
+    try {
+      // 1. 发送消息并自动创建会话
+      const response = await sendMessage(message, { first: true })
+      if (response.code === 0) {
+        // 2. 获取新创建的会话信息
+        const sessionId = response.data.sessionId
+
+        // 3. 刷新会话列表
+        await this.dispatch('chat/fetchSessions')
+
+        // 4. 设置当前会话
+        commit('SET_CURRENT_SESSION', sessionId)
+
+        // 5. 添加用户消息
+        const userMessage = {
+          id: Date.now().toString() + '-user',
+          sessionId,
+          role: 'user',
+          content: message,
+          createTime: new Date().toISOString()
+        }
+        commit('ADD_MESSAGE', userMessage)
+
+        // 6. 添加AI回复
+        commit('ADD_MESSAGE', response.data)
+
+        return Promise.resolve(response.data)
+      } else {
+        return Promise.reject(response.message || '发送消息失败')
+      }
+    } catch (error) {
+      return Promise.reject(error.message || '发送消息失败')
     }
   },
 
@@ -107,17 +143,27 @@ const actions = {
   finishStreaming({ commit, state }) {
     // 将流式消息添加到消息列表
     if (state.streamingMessage.trim()) {
-      const message = {
-        id: Date.now().toString(),
-        sessionId: state.currentSessionId,
-        role: 'assistant',
-        content: state.streamingMessage,
-        createTime: new Date().toISOString()
+      // 如果当前会话存在且不是首次对话模式，正常添加消息
+      if (state.currentSessionId && state.messages.some(m => m.sessionId === state.currentSessionId)) {
+        const message = {
+          id: Date.now().toString(),
+          sessionId: state.currentSessionId,
+          role: 'assistant',
+          content: state.streamingMessage,
+          createTime: new Date().toISOString()
+        }
+        commit('ADD_MESSAGE', message)
       }
-      commit('ADD_MESSAGE', message)
+      // 如果是首次对话，消息会在加载真实会话时自动加载
     }
-    commit('SET_IS_STREAMING', false)
+
+    // 先设置流式消息为空，再关闭流式状态，确保流式组件先被移除
     commit('SET_STREAMING_MESSAGE', '')
+
+    // 延迟一小段时间再关闭流式状态，确保消息渲染完成
+    setTimeout(() => {
+      commit('SET_IS_STREAMING', false)
+    }, 50)
   },
 
   addUserMessage({ commit }, { sessionId, content }) {
@@ -129,6 +175,72 @@ const actions = {
       createTime: new Date().toISOString()
     }
     commit('ADD_MESSAGE', message)
+  },
+
+  async streamChatWithAutoSession({ commit, dispatch }, { message, callbacks }) {
+    try {
+      // 1. 添加用户消息到前端显示
+      const userMessage = {
+        id: Date.now().toString(),
+        sessionId: null, // 暂时不知道会话ID
+        role: 'user',
+        content: message,
+        createTime: new Date().toISOString()
+      }
+      commit('ADD_MESSAGE', userMessage)
+
+      // 2. 开始流式响应
+      commit('SET_IS_STREAMING', true)
+      commit('SET_STREAMING_MESSAGE', '')
+
+      // 3. 调用流式发送消息的API，设置first=true自动创建会话
+      await streamChat(message, { first: true }, {
+        onMessage: (content) => {
+          commit('APPEND_STREAMING_CONTENT', content)
+          callbacks.onMessage && callbacks.onMessage(content)
+        },
+        onDone: async () => {
+          // 4. 流式响应结束后，刷新会话列表
+          await dispatch('fetchSessions')
+
+          // 5. 如果有会话，选择第一个会话
+          if (state.sessions.length > 0) {
+            const newSessionId = state.sessions[0].id
+            commit('SET_CURRENT_SESSION', newSessionId)
+
+            // 6. 更新用户消息的会话ID
+            userMessage.sessionId = newSessionId
+
+            // 7. 将流式消息添加到消息列表
+            if (state.streamingMessage.trim()) {
+              const aiMessage = {
+                id: Date.now().toString(),
+                sessionId: newSessionId,
+                role: 'assistant',
+                content: state.streamingMessage,
+                createTime: new Date().toISOString()
+              }
+              commit('ADD_MESSAGE', aiMessage)
+            }
+          }
+
+          // 8. 重置流式状态
+          commit('SET_IS_STREAMING', false)
+          commit('SET_STREAMING_MESSAGE', '')
+
+          callbacks.onDone && callbacks.onDone()
+        },
+        onError: (error) => {
+          commit('SET_IS_STREAMING', false)
+          commit('SET_STREAMING_MESSAGE', '')
+          callbacks.onError && callbacks.onError(error)
+        }
+      })
+    } catch (error) {
+      commit('SET_IS_STREAMING', false)
+      commit('SET_STREAMING_MESSAGE', '')
+      throw error
+    }
   }
 }
 
@@ -142,10 +254,25 @@ const mutations = {
   },
 
   REMOVE_SESSION(state, sessionId) {
+    // 先检查是否为当前会话
+    const isCurrentSession = state.currentSessionId === sessionId
+
+    // 从会话列表中移除
     state.sessions = state.sessions.filter(s => s.id !== sessionId)
-    if (state.currentSessionId === sessionId) {
-      state.currentSessionId = state.sessions.length > 0 ? state.sessions[0].id : null
-      state.messages = []
+
+    // 如果是当前会话，且不是临时会话，则选择新的会话
+    if (isCurrentSession) {
+      // 如果是临时会话，不需要清空消息，因为将会加载真实会话的消息
+      if (!sessionId.toString().startsWith('temp-')) {
+        state.messages = []
+      }
+
+      // 如果还有其他会话，选择第一个
+      if (state.sessions.length > 0) {
+        state.currentSessionId = state.sessions[0].id
+      } else {
+        state.currentSessionId = null
+      }
     }
   },
 
@@ -169,7 +296,13 @@ const mutations = {
   },
 
   CLEAR_MESSAGES(state, sessionId) {
-    if (state.currentSessionId === sessionId) {
+    if (sessionId) {
+      // 清除指定会话的消息
+      if (state.currentSessionId === sessionId) {
+        state.messages = []
+      }
+    } else {
+      // 如果没有指定会话，清除所有消息
       state.messages = []
     }
   },

@@ -4,7 +4,13 @@ import store from '../store'
 const routes = [
   {
     path: '/',
-    redirect: '/chat'
+    redirect: '/home'
+  },
+  {
+    path: '/home',
+    name: 'Home',
+    component: () => import('../views/HomeView.vue'),
+    meta: { requiresAuth: true }
   },
   {
     path: '/login',
@@ -38,13 +44,43 @@ const router = createRouter({
 })
 
 // 导航守卫
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
+  console.log('路由守卫: 从', from.path, '到', to.path)
+
+  // 检查用户登录状态
   const isLoggedIn = store.getters['user/isLoggedIn']
-  
+  const hasToken = !!localStorage.getItem('token')
+
+  console.log('当前登录状态:', isLoggedIn ? '已登录' : '未登录', 'Token状态:', hasToken ? '存在' : '不存在')
+
+  // 如果有token但没有用户信息，尝试获取用户信息
+  if (hasToken && !isLoggedIn) {
+    try {
+      console.log('有token但没有用户信息，尝试获取用户信息')
+      await store.dispatch('user/fetchCurrentUser')
+      // 重新检查登录状态
+      const updatedLoginStatus = store.getters['user/isLoggedIn']
+      console.log('获取用户信息后的登录状态:', updatedLoginStatus ? '已登录' : '未登录')
+    } catch (error) {
+      console.error('获取用户信息失败:', error)
+      localStorage.removeItem('token')
+    }
+  }
+
+  // 重新获取登录状态（可能已经更新）
+  const finalLoginStatus = store.getters['user/isLoggedIn']
+
   // 如果需要登录但用户未登录，重定向到登录页面
-  if (to.meta.requiresAuth && !isLoggedIn) {
+  if (to.meta.requiresAuth && !finalLoginStatus) {
+    console.log('页面需要登录权限但用户未登录，重定向到登录页面')
     next('/login')
+  }
+  // 如果用户已登录但访问登录页面，重定向到主页
+  else if (finalLoginStatus && (to.path === '/login' || to.path === '/register')) {
+    console.log('用户已登录但访问登录/注册页面，重定向到主页')
+    next('/home')
   } else {
+    console.log('允许访问页面:', to.path)
     next()
   }
 })

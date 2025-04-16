@@ -158,16 +158,31 @@ export default {
   transition: all 0.2s ease;
   position: relative;
   border: 1px solid transparent;
+  animation: fadeIn 0.3s ease;
+  transform-origin: center;
 }
 
 .chat-session:hover {
   background-color: var(--bg-tertiary);
   border-color: var(--border-color);
+  transform: translateX(3px);
 }
 
 .chat-session.active {
   background-color: var(--primary-light);
   border-color: var(--primary-color);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(var(--primary-rgb), 0.4); }
+  70% { box-shadow: 0 0 0 5px rgba(var(--primary-rgb), 0); }
+  100% { box-shadow: 0 0 0 0 rgba(var(--primary-rgb), 0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .session-info {
@@ -178,6 +193,23 @@ export default {
 .session-icon {
   color: var(--primary-color);
   font-size: 1.2rem;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-tertiary);
+  border-radius: var(--radius-full);
+  transition: all 0.3s ease;
+}
+
+.chat-session:hover .session-icon {
+  transform: scale(1.1);
+}
+
+.chat-session.active .session-icon {
+  background-color: var(--primary-color);
+  color: white;
 }
 
 .session-name {
@@ -191,8 +223,8 @@ export default {
 .session-actions {
   display: flex;
   gap: 4px;
-  opacity: 0.5;
-  transition: opacity 0.2s ease;
+  opacity: 0;
+  transition: all 0.3s ease;
 }
 
 .chat-session:hover .session-actions,
@@ -208,17 +240,20 @@ export default {
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-full);
-  background-color: transparent;
+  background-color: var(--bg-tertiary);
   border: none;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
+  transform: scale(0.9);
 }
 
 .btn-icon:hover {
-  background-color: var(--bg-tertiary);
+  background-color: var(--bg-secondary);
+  transform: scale(1.1);
 }
 
 .btn-icon.text-danger:hover {
-  background-color: rgba(220, 53, 69, 0.1);
+  background-color: var(--danger-light, #ffebee);
+  color: var(--danger, #dc3545);
 }
 
 /* 重命名弹窗 */

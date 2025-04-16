@@ -1,34 +1,42 @@
 <template>
-  <div class="message ai-message">
-    <div class="message-avatar">
-      <div class="avatar-circle ai-avatar">
-        <i class="bi bi-robot"></i>
-      </div>
-    </div>
-    <div class="message-content">
-      <div class="message-header">
-        <span class="message-sender">AI 助手</span>
-        <span class="message-time text-muted small">
-          {{ currentTime }}
-        </span>
-      </div>
-      <div class="message-bubble ai-bubble">
-        <div class="message-text streaming-text">
-          <span v-html="formattedContent"></span>
-          <span class="typing-cursor"></span>
-        </div>
-        <div class="typing-indicator">
-          <span class="typing-dot"></span>
-          <span class="typing-dot"></span>
-          <span class="typing-dot"></span>
+  <transition name="fade">
+    <div class="message ai-message">
+      <div class="message-avatar">
+        <div class="avatar-circle ai-avatar">
+          <i class="bi bi-robot"></i>
         </div>
       </div>
+      <div class="message-content">
+        <div class="message-header">
+          <div class="d-flex align-items-center">
+            <span class="message-sender">AI 助手</span>
+            <span class="badge bg-primary ms-2 streaming-badge">
+              <i class="bi bi-lightning-charge"></i> 正在生成
+            </span>
+          </div>
+          <span class="message-time text-muted small">
+            {{ currentTime }}
+          </span>
+        </div>
+        <div class="message-bubble ai-bubble">
+          <div class="message-text streaming-text">
+            <div ref="markdownContent" v-html="formattedContent"></div>
+            <span class="typing-cursor"></span>
+          </div>
+          <div class="typing-indicator">
+            <span class="typing-dot"></span>
+            <span class="typing-dot"></span>
+            <span class="typing-dot"></span>
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
+  </transition>
 </template>
 
 <script>
-import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { marked } from 'marked'
 
 export default {
   name: 'StreamingResponse',
@@ -40,22 +48,49 @@ export default {
   },
   setup(props) {
     const currentTime = ref(new Date().toLocaleTimeString())
+    const markdownContent = ref(null)
     let timeInterval = null
+
+    // 配置marked选项
+    marked.setOptions({
+      gfm: true, // 启用GitHub风格的Markdown
+      breaks: true, // 允许回车换行
+      silent: true, // 忽略错误
+      highlight: function(code, lang) {
+        return code; // 简单返回代码，可以在这里集成语法高亮库
+      }
+    })
 
     // 格式化消息内容
     const formattedContent = computed(() => {
-      // 处理换行符
-      let content = props.content.replace(/\n/g, '<br>')
+      try {
+        // 使用marked库解析Markdown
+        return marked.parse(props.content)
+      } catch (error) {
+        console.error('Markdown解析错误:', error)
+        // 降级处理
+        let content = props.content.replace(/\n/g, '<br>')
+        // 处理代码块
+        content = content.replace(/```([\s\S]*?)```/g, (match, code) => {
+          return `<pre class="code-block"><code>${code}</code></pre>`
+        })
+        // 处理行内代码
+        content = content.replace(/`([^`]+)`/g, '<code>$1</code>')
+        return content
+      }
+    })
 
-      // 处理代码块
-      content = content.replace(/```([\s\S]*?)```/g, (match, code) => {
-        return `<pre class="code-block"><code>${code}</code></pre>`
-      })
-
-      // 处理行内代码
-      content = content.replace(/`([^`]+)`/g, '<code>$1</code>')
-
-      return content
+    // 监听内容变化，自动滚动到底部
+    watch(() => props.content, () => {
+      setTimeout(() => {
+        if (markdownContent.value) {
+          const element = markdownContent.value;
+          const parent = element.closest('.message-bubble');
+          if (parent) {
+            parent.scrollTop = parent.scrollHeight;
+          }
+        }
+      }, 0);
     })
 
     // 组件挂载时启动定时器
@@ -75,7 +110,8 @@ export default {
 
     return {
       currentTime,
-      formattedContent
+      formattedContent,
+      markdownContent
     }
   }
 }
@@ -102,6 +138,7 @@ export default {
   color: white;
   font-size: 1.2rem;
   box-shadow: var(--shadow-sm);
+  animation: pulse 2s infinite;
 }
 
 .ai-avatar {
@@ -125,6 +162,12 @@ export default {
   font-size: 0.9rem;
 }
 
+.streaming-badge {
+  font-size: 0.7rem;
+  padding: 0.25rem 0.5rem;
+  animation: pulse 2s infinite;
+}
+
 .message-time {
   font-size: 0.8rem;
 }
@@ -134,6 +177,8 @@ export default {
   padding: 12px 16px;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
+  transition: all 0.3s ease;
+  border-left: 3px solid var(--primary-color);
 }
 
 .ai-bubble {
@@ -152,7 +197,7 @@ export default {
   display: inline-block;
   width: 2px;
   height: 1em;
-  background-color: currentColor;
+  background-color: var(--primary-color);
   margin-left: 2px;
   vertical-align: text-bottom;
   animation: blink 1s step-end infinite;
@@ -177,7 +222,7 @@ export default {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background-color: var(--neutral-400);
+  background-color: var(--primary-color);
   margin: 0 2px;
   animation: bounce 1.4s infinite ease-in-out both;
 }
@@ -195,6 +240,12 @@ export default {
   40% { transform: scale(1); }
 }
 
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
 /* 代码块样式 */
 .code-block {
   background-color: var(--neutral-800);
@@ -203,6 +254,7 @@ export default {
   padding: 12px;
   margin: 8px 0;
   overflow-x: auto;
+  border-left: 3px solid var(--primary-color);
 }
 
 code {
@@ -220,8 +272,29 @@ code {
   display: block;
 }
 
+.streaming-text {
+  animation: fadeInText 0.5s ease;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInText {
+  from { opacity: 0.7; }
+  to { opacity: 1; }
+}
+
+/* 添加消息渲染过渡动画 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
 }
 </style>

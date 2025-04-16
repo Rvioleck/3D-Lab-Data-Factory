@@ -14,7 +14,14 @@ const apiClient = axios.create({
 // 用户登录
 export const login = async (credentials) => {
   try {
-    const response = await apiClient.post('/user/login', credentials)
+    console.log('发送登录请求:', credentials.userAccount)
+    const response = await apiClient.post('/user/login', credentials, {
+      withCredentials: true, // 确保发送请求时带上cookie
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    console.log('登录响应:', response.data)
     return response.data
   } catch (error) {
     console.error('登录失败:', error)
@@ -36,7 +43,14 @@ export const register = async (userData) => {
 // 获取当前登录用户信息
 export const getLoginUser = async () => {
   try {
-    const response = await apiClient.post('/user/get/login')
+    console.log('发送获取当前登录用户信息请求')
+    const response = await apiClient.post('/user/get/login', {}, {
+      withCredentials: true, // 确保发送请求时带上cookie
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    console.log('获取用户信息响应:', response.data)
     return response.data
   } catch (error) {
     console.error('获取用户信息失败:', error)

@@ -142,14 +142,15 @@
 }
 ```
 
-### 2.4 发送消息
+### 2.4 发送消息（支持自动创建会话）
 - 请求路径: `/chat/message`
 - 请求方法: POST
 - 请求体:
 ```json
 {
-    "sessionId": "1234567890123456789",   // 会话ID (字符串类型的雪花ID)
-    "message": "string"                 // 消息内容
+    "sessionId": "1234567890123456789",   // 会话ID (字符串类型的雪花ID)，first=true时可不传
+    "message": "string",                // 消息内容
+    "first": false                      // 是否是首次消息，true表示自动创建会话，false表示使用已有会话
 }
 ```
 - 响应数据:
@@ -168,6 +169,8 @@
 }
 ```
 
+> 注意：当 `first=true` 时，会自动创建新会话并发送消息，此时 `sessionId` 参数可以不传。
+
 ### 2.5 删除会话
 - 请求路径: `/chat/session/{sessionId}`
 - 请求方法: DELETE
@@ -182,7 +185,7 @@
 }
 ```
 
-### 2.6 流式发送消息
+### 2.6 流式发送消息（支持自动创建会话）
 - 请求路径: `/chat/stream`
 - 请求方法: POST
 - Content-Type: `application/json`
@@ -190,8 +193,9 @@
 - 请求体:
 ```json
 {
-    "sessionId": "1234567890123456789",   // 会话ID (字符串类型的雪花ID)
-    "message": "string"                 // 消息内容
+    "sessionId": "1234567890123456789",   // 会话ID (字符串类型的雪花ID)，first=true时可不传
+    "message": "string",                // 消息内容
+    "first": false                      // 是否是首次消息，true表示自动创建会话，false表示使用已有会话
 }
 ```
 - 响应格式: Server-Sent Events (SSE)
@@ -212,6 +216,8 @@ data: [DONE]
   - 最后会发送 `data: [DONE]` 表示响应结束
   - 客户端需要使用 EventSource 或 fetch API 来处理流式响应
   - 如果发生错误，连接会被关闭，客户端需要处理错误情况
+
+> 注意：当 `first=true` 时，会自动创建新会话并流式发送消息，此时 `sessionId` 参数可以不传。
 
 ## 3. 健康检查接口
 

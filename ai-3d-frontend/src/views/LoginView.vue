@@ -118,12 +118,25 @@ export default {
       isLoading.value = true
 
       try {
-        await store.dispatch('user/login', {
+        // 登录并获取用户信息
+        const result = await store.dispatch('user/login', {
           userAccount: userAccount.value,
           userPassword: userPassword.value
         })
-        router.push('/chat')
+
+        console.log('登录成功，用户信息:', result)
+
+        // 确保用户状态已设置
+        if (store.getters['user/isLoggedIn']) {
+          console.log('用户已登录，跳转到主页')
+          // 使用replace而不是push，避免用户可以通过浏览器后退回到登录页面
+          router.replace('/home')
+        } else {
+          console.error('登录成功但用户状态未设置')
+          error.value = '登录成功但系统出现异常，请刷新页面重试'
+        }
       } catch (err) {
+        console.error('登录失败:', err)
         error.value = typeof err === 'string' ? err : '登录失败，请检查账号密码'
       } finally {
         isLoading.value = false
@@ -132,9 +145,9 @@ export default {
 
     // 组件挂载后聚焦到账号输入框
     onMounted(() => {
-      // 如果已经登录，直接跳转到聊天页面
+      // 如果已经登录，直接跳转到主页
       if (store.getters['user/isLoggedIn']) {
-        router.push('/chat')
+        router.push('/home')
         return
       }
     })
