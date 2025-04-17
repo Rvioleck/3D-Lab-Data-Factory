@@ -1,16 +1,13 @@
 <template>
   <div class="chat-view">
     <!-- 非管理员用户显示无权限提示 -->
-    <div v-if="!isAdmin" class="no-permission-container">
-      <div class="text-center">
-        <i class="bi bi-shield-lock text-danger" style="font-size: 5rem;"></i>
-        <h2 class="mt-4">权限不足</h2>
-        <p class="text-muted mt-3">很抱歉，聊天功能当前仅开放给管理员使用。</p>
-        <router-link to="/home" class="btn btn-primary mt-3">
-          <i class="bi bi-house me-2"></i>返回首页
-        </router-link>
-      </div>
-    </div>
+    <NoPermission
+      v-if="!isAdmin"
+      title="权限不足"
+      message="很抱歉，聊天功能当前仅开放给管理员使用。"
+      backLink="/home"
+      backText="返回首页"
+    />
 
     <!-- 管理员用户显示聊天界面 -->
     <div v-else class="chat-container">
@@ -26,9 +23,7 @@
 
         <div class="sidebar-content p-2">
           <div v-if="isLoadingSessions" class="text-center py-4">
-            <div class="spinner-border text-primary" role="status">
-              <span class="visually-hidden">加载中...</span>
-            </div>
+            <SkeletonLoader type="message" v-for="i in 3" :key="i" class="mb-3" />
           </div>
 
           <div v-else-if="sessions.length === 0" class="text-center py-5">
@@ -56,26 +51,50 @@
       <!-- 聊天主区域 -->
       <div class="col-md-9 chat-main">
         <div v-if="!currentSessionId" class="chat-container d-flex flex-column h-100">
-          <!-- 新的欢迎界面 -->
-          <div class="welcome-container flex-grow-1 overflow-auto p-3 d-flex flex-column justify-content-center align-items-center">
-            <div class="text-center welcome-content">
-              <i class="bi bi-robot text-primary" style="font-size: 5rem;"></i>
-              <h2 class="mt-4">欢迎使用AI助手</h2>
-              <p class="text-muted mt-3">这是一个新对话，直接在下方输入框中发送消息，系统将自动创建新会话！</p>
-              <div class="mt-3">
-                <span class="badge bg-primary p-2">
-                  <i class="bi bi-info-circle me-1"></i>当前处于新对话模式
-                </span>
-              </div>
-              <div class="suggestions mt-4">
-                <div class="suggestion-title text-muted mb-2">您可以尝试这些问题：</div>
-                <div class="suggestion-items">
-                  <button class="btn btn-outline-primary m-1" @click="usePromptSuggestion('你能做什么？')">你能做什么？</button>
-                  <button class="btn btn-outline-primary m-1" @click="usePromptSuggestion('帮我写一个简单的Java程序')">帮我写一个简单的Java程序</button>
-                  <button class="btn btn-outline-primary m-1" @click="usePromptSuggestion('解释一下什么是人工智能')">解释一下什么是人工智能</button>
+          <!-- 消息列表区域 -->
+          <div class="chat-messages flex-grow-1 overflow-auto p-3" ref="newChatMessagesContainer">
+            <!-- 欢迎界面 -->
+            <div v-if="messages.length === 0 && !isStreaming" class="welcome-container d-flex flex-column justify-content-center align-items-center h-100">
+              <div class="text-center welcome-content">
+                <i class="bi bi-robot text-primary" style="font-size: 5rem;"></i>
+                <h2 class="mt-4">欢迎使用AI助手</h2>
+                <p class="text-muted mt-3">这是一个新对话，直接在下方输入框中发送消息，系统将自动创建新会话！</p>
+                <div class="mt-3">
+                  <span class="badge bg-primary p-2">
+                    <i class="bi bi-info-circle me-1"></i>当前处于新对话模式
+                  </span>
+                </div>
+                <div class="suggestions mt-4">
+                  <div class="suggestion-title text-muted mb-2">您可以尝试这些问题：</div>
+                  <div class="suggestion-items">
+                    <button class="btn btn-outline-primary m-1" @click="usePromptSuggestion('你能做什么？')">你能做什么？</button>
+                    <button class="btn btn-outline-primary m-1" @click="usePromptSuggestion('帮我写一个简单的Java程序')">帮我写一个简单的Java程序</button>
+                    <button class="btn btn-outline-primary m-1" @click="usePromptSuggestion('解释一下什么是人工智能')">解释一下什么是人工智能</button>
+                  </div>
                 </div>
               </div>
             </div>
+
+            <!-- 消息列表 -->
+            <template v-if="messages.length > 0 || isStreaming">
+              <div class="messages-date-divider" v-if="messages.length > 0">
+                <span>{{ formatMessageDate(messages[0].createTime) }}</span>
+              </div>
+
+              <ChatMessage
+                v-for="(message, index) in messages"
+                :key="message.id"
+                :message="message"
+                :showDateDivider="shouldShowDateDivider(message, messages[index-1])"
+                @delete="deleteMessage"
+              />
+
+              <!-- 流式响应，放在消息列表后面确保显示顺序正确 -->
+              <StreamingResponse
+                v-if="isStreaming"
+                :content="streamingMessage"
+              />
+            </template>
           </div>
 
           <!-- 输入区域 -->
@@ -102,11 +121,11 @@
                   </div>
                 </div>
                 <button
-                  class="btn btn-primary send-button"
+                  class="btn btn-primary send-button btn-press hardware-accelerated"
                   type="submit"
                   :disabled="!messageInput.trim() || isStreaming"
                 >
-                  <i class="bi" :class="isStreaming ? 'bi-hourglass-split' : 'bi-send'"></i>
+                  <i class="bi" :class="isStreaming ? 'bi-hourglass-split pulse-animation' : 'bi-send'"></i>
                   <span class="ms-1 d-none d-md-inline">发送</span>
                 </button>
               </div>
@@ -130,11 +149,8 @@
 
         <!-- 消息列表 -->
         <div class="chat-messages flex-grow-1 overflow-auto p-3" ref="messagesContainer">
-          <div v-if="isLoadingMessages" class="text-center py-4">
-            <div class="spinner-border text-primary" role="status">
-              <span class="visually-hidden">加载中...</span>
-            </div>
-            <p class="text-muted mt-2">正在加载消息...</p>
+          <div v-if="isLoadingMessages" class="py-4">
+            <SkeletonLoader type="message" v-for="i in 5" :key="i" class="mb-4" />
           </div>
 
           <div v-else-if="messages.length === 0" class="empty-messages-state">
@@ -154,6 +170,7 @@
               :key="message.id"
               :message="message"
               :showDateDivider="shouldShowDateDivider(message, messages[index-1])"
+              @delete="deleteMessage"
             />
 
             <!-- 流式响应，放在消息列表后面确保显示顺序正确 -->
@@ -188,11 +205,11 @@
                 </div>
               </div>
               <button
-                class="btn btn-primary send-button"
+                class="btn btn-primary send-button btn-press hardware-accelerated"
                 type="submit"
                 :disabled="!messageInput.trim() || isStreaming"
               >
-                <i class="bi" :class="isStreaming ? 'bi-hourglass-split' : 'bi-send'"></i>
+                <i class="bi" :class="isStreaming ? 'bi-hourglass-split pulse-animation' : 'bi-send'"></i>
                 <span class="ms-1 d-none d-md-inline">发送</span>
               </button>
             </div>
@@ -206,19 +223,24 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useStore } from 'vuex'
 import ChatSession from '../components/ChatSession.vue'
 import ChatMessage from '../components/ChatMessage.vue'
 import StreamingResponse from '../components/StreamingResponse.vue'
+import NoPermission from '../components/NoPermission.vue'
+import SkeletonLoader from '../components/SkeletonLoader.vue'
 import { streamChat } from '../api/chat'
+import { debounce, throttle, optimizedScroll } from '../utils/performance'
 
 export default {
   name: 'ChatView',
   components: {
     ChatSession,
     ChatMessage,
-    StreamingResponse
+    StreamingResponse,
+    NoPermission,
+    SkeletonLoader
   },
   setup() {
     const store = useStore()
@@ -347,36 +369,54 @@ export default {
       try {
         if (!currentSessionId.value) {
           // 如果没有当前会话，使用特殊的首次对话模式
-          // 创建一个用于显示的用户消息对象，但不添加到会话
+          // 创建一个用于显示的用户消息对象
           const userMessage = {
             id: 'temp-user-' + Date.now(),
-            sessionId: null,
+            sessionId: 'temp-session', // 使用临时会话 ID
             role: 'user',
             content: message,
             createTime: new Date().toISOString()
           }
 
-          // 直接将用户消息添加到消息列表，但不创建临时会话
+          // 将用户消息添加到消息列表
           store.commit('chat/ADD_MESSAGE', userMessage)
 
           // 确保用户消息先渲染出来
           await nextTick()
-          scrollToBottom(true)
+          scrollToBottom(true, 'newChatMessagesContainer')
 
           // 等待一小段时间确保用户消息已经完全渲染
           await new Promise(resolve => setTimeout(resolve, 50))
 
           // 开始流式响应
           store.dispatch('chat/startStreaming')
-          scrollToBottom(true)
+          scrollToBottom(true, 'newChatMessagesContainer')
 
           // 异步调用流式响应，不等待完成
           streamChat(message, { first: true }, {
             onMessage: (content) => {
               store.dispatch('chat/appendStreamingContent', content)
-              scrollToBottom(true)
+              scrollToBottom(true, 'newChatMessagesContainer')
             },
             onDone: async () => {
+              // 保存当前的流式消息内容
+              const aiContent = store.getters['chat/streamingMessage']
+
+              // 完成流式响应，但保留流式消息内容
+              store.dispatch('chat/finishStreaming', { keepContent: true })
+
+              // 创建一个AI回复消息对象
+              const aiMessage = {
+                id: 'temp-ai-' + Date.now(),
+                sessionId: 'temp-session',
+                role: 'assistant',
+                content: aiContent,
+                createTime: new Date().toISOString()
+              }
+
+              // 将AI回复添加到消息列表
+              store.commit('chat/ADD_MESSAGE', aiMessage)
+
               // 响应完成后刷新会话列表
               await store.dispatch('chat/fetchSessions')
 
@@ -384,35 +424,23 @@ export default {
               if (store.getters['chat/sessions'].length > 0) {
                 const newSession = store.getters['chat/sessions'][0]
 
-                // 设置当前会话
-                store.dispatch('chat/setCurrentSession', newSession.id)
+                // 设置当前会话，但不清除临时消息
+                store.dispatch('chat/setCurrentSession', newSession.id, { keepMessages: true })
 
-                // 先完成流式响应，保存AI回复
-                const aiContent = store.getters['chat/streamingMessage']
-                store.dispatch('chat/finishStreaming')
-
-                // 清除临时消息
-                store.commit('chat/CLEAR_MESSAGES')
-
-                // 加载真实会话的消息，包含用户提问和AI回复
-                await loadMessages(newSession.id)
-              } else {
-                // 如果没有会话，则完成流式响应
-                store.dispatch('chat/finishStreaming')
+                // 更新临时消息的会话ID为真实会话ID
+                store.commit('chat/UPDATE_TEMP_MESSAGES_SESSION_ID', newSession.id)
               }
 
               // 响应完成后聚焦到输入框
               if (messageTextarea.value) {
                 messageTextarea.value.focus()
               }
-              scrollToBottom(true)
+              scrollToBottom(true, 'newChatMessagesContainer')
             },
             onError: (error) => {
               console.error('流式响应错误:', error)
               alert('获取AI响应失败: ' + error)
               store.dispatch('chat/finishStreaming')
-              // 清除临时消息
-              store.commit('chat/CLEAR_MESSAGES')
             }
           })
         } else {
@@ -494,19 +522,44 @@ export default {
       }
     }
 
-    // 滚动到底部
-    const scrollToBottom = (smooth = false) => {
-      if (messagesContainer.value) {
-        if (smooth) {
-          messagesContainer.value.scrollTo({
-            top: messagesContainer.value.scrollHeight,
-            behavior: 'smooth'
-          })
-        } else {
-          messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
-        }
+    // 滚动到底部 - 优化版
+    const scrollToBottom = (smooth = false, containerRef = null) => {
+      // 确定要滚动的容器
+      let container = null;
+
+      if (containerRef === 'newChatMessagesContainer') {
+        // 如果指定了新对话容器
+        container = document.querySelector('.chat-main > div:first-child .chat-messages');
+      } else {
+        // 默认使用messagesContainer
+        container = messagesContainer.value;
+      }
+
+      if (container) {
+        // 使用requestAnimationFrame确保在下一帧渲染前执行
+        requestAnimationFrame(() => {
+          if (smooth) {
+            container.scrollTo({
+              top: container.scrollHeight,
+              behavior: 'smooth'
+            })
+          } else {
+            container.scrollTop = container.scrollHeight
+          }
+        })
       }
     }
+
+    // 使用节流函数优化滚动事件
+    const throttledScroll = throttle(() => {
+      if (messagesContainer.value) {
+        const container = messagesContainer.value;
+        const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 50;
+        if (isAtBottom) {
+          scrollToBottom(true);
+        }
+      }
+    }, 100);
 
     // 监听会话ID变化，加载对应的消息
     watch(currentSessionId, (newId) => {
@@ -515,9 +568,33 @@ export default {
       }
     })
 
-    // 组件挂载时加载会话列表
+    // 组件挂载时加载会话列表并添加滚动事件监听
     onMounted(() => {
       loadSessions()
+
+      // 添加滚动事件监听
+      if (messagesContainer.value) {
+        messagesContainer.value.addEventListener('scroll', throttledScroll)
+      }
+
+      // 为新对话消息容器添加滚动事件监听
+      const newChatContainer = document.querySelector('.chat-main > div:first-child .chat-messages');
+      if (newChatContainer) {
+        newChatContainer.addEventListener('scroll', throttledScroll);
+      }
+    })
+
+    // 组件卸载时移除事件监听
+    onBeforeUnmount(() => {
+      if (messagesContainer.value) {
+        messagesContainer.value.removeEventListener('scroll', throttledScroll)
+      }
+
+      // 移除新对话消息容器的滚动事件监听
+      const newChatContainer = document.querySelector('.chat-main > div:first-child .chat-messages');
+      if (newChatContainer) {
+        newChatContainer.removeEventListener('scroll', throttledScroll);
+      }
     })
 
     // 格式化消息日期
@@ -537,7 +614,16 @@ export default {
       return currentDate.toDateString() !== prevDate.toDateString()
     }
 
-
+    // 删除消息
+    const deleteMessage = async (messageId) => {
+      try {
+        await store.dispatch('chat/deleteMessage', messageId)
+        // 可以添加成功提示
+      } catch (error) {
+        console.error('删除消息失败:', error)
+        alert('删除消息失败: ' + error)
+      }
+    }
 
     return {
       isAdmin,
@@ -563,7 +649,8 @@ export default {
       usePromptSuggestion,
       handleEnterKey,
       formatMessageDate,
-      shouldShowDateDivider
+      shouldShowDateDivider,
+      deleteMessage
     }
   }
 }
@@ -666,8 +753,8 @@ export default {
 }
 
 .btn-icon {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   display: flex;
   align-items: center;
@@ -676,6 +763,7 @@ export default {
   background-color: var(--bg-tertiary);
   border: none;
   transition: background-color 0.2s ease;
+  font-size: 0.9rem;
 }
 
 .btn-icon:hover {
@@ -704,7 +792,7 @@ export default {
 /* 消息日期分隔线 */
 .messages-date-divider {
   text-align: center;
-  margin: 1rem 0;
+  margin: 0.7rem 0;
   position: relative;
 }
 
@@ -717,15 +805,17 @@ export default {
   height: 1px;
   background-color: var(--border-color);
   z-index: 1;
+  opacity: 0.7;
 }
 
 .messages-date-divider span {
   background-color: var(--bg-secondary);
-  padding: 0 1rem;
+  padding: 0 0.8rem;
   position: relative;
   z-index: 2;
   color: var(--text-secondary);
-  font-size: 0.85rem;
+  font-size: 0.75rem;
+  opacity: 0.8;
 }
 
 /* 输入区域 */
@@ -748,11 +838,14 @@ export default {
   resize: none;
   transition: all 0.3s ease;
   padding-right: 40px;
+  padding-top: 8px;
+  padding-bottom: 8px;
   border: 1px solid var(--border-color);
+  font-size: 0.95rem;
 }
 
 .custom-textarea:focus {
-  box-shadow: 0 0 0 0.25rem rgba(var(--primary-rgb), 0.25);
+  box-shadow: 0 0 0 0.2rem rgba(var(--primary-rgb), 0.15);
   border-color: var(--primary-color);
 }
 
@@ -800,9 +893,10 @@ export default {
 .send-button {
   border-top-right-radius: var(--radius-md);
   border-bottom-right-radius: var(--radius-md);
-  padding-left: 1rem;
-  padding-right: 1rem;
+  padding-left: 0.8rem;
+  padding-right: 0.8rem;
   transition: all 0.2s ease;
+  font-size: 0.9rem;
 }
 
 .send-button:not(:disabled):hover {

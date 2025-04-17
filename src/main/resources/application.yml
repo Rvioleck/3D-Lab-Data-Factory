@@ -11,6 +11,11 @@ spring:
     url: jdbc:mysql://localhost:3306/ai_3d?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai
     username: root
     password: 123456
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 15MB
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: false
@@ -48,3 +53,29 @@ deepseek:
     temperature: 0.7
     # 最大令牌数
     max-tokens: 2048
+
+# WebSocket客户端配置
+websocket:
+  server:
+    # WebSocket服务器URL
+    url: ws://10.0.0.2:8001/generate3d
+  connection:
+    # 连接超时时间（秒）
+    timeout: 30
+
+# 文件上传配置已移至spring配置下
+
+# 存储服务配置
+storage:
+  # 存储类型：local（本地存储）或oss（阿里云OSS）
+  type: local
+  # 本地存储配置
+  local:
+    # 存储根路径
+    root-path: ./storage
+
+# 3D重建结果存储配置（兼容旧版配置）
+reconstruction:
+  storage:
+    # 本地存储路径
+    local-path: ./construction_results

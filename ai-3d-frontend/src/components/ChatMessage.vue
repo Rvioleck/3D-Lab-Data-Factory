@@ -1,8 +1,8 @@
 <template>
-  <transition name="message-fade" appear>
-    <div class="message" :class="messageClass">
+  <transition :name="isUser ? 'slide-right' : 'slide-left'" appear>
+    <div class="message hardware-accelerated" :class="messageClass">
       <div class="message-avatar">
-        <div class="avatar-circle" :class="avatarClass">
+        <div class="avatar-circle hover-lift" :class="avatarClass">
           <i class="bi" :class="avatarIcon"></i>
         </div>
       </div>
@@ -13,11 +13,14 @@
             {{ formatTime(message.createTime) }}
           </span>
         </div>
-        <div class="message-bubble" :class="bubbleClass" @mouseenter="showActions = true" @mouseleave="showActions = false">
+        <div class="message-bubble hover-lift" :class="bubbleClass" @mouseenter="showActions = true" @mouseleave="showActions = false">
           <div class="message-text" v-html="formattedContent"></div>
           <div class="message-actions" v-if="showActions">
-            <button class="btn btn-sm btn-icon" @click="copyMessage" title="复制消息">
+            <button class="btn btn-sm btn-icon btn-press" @click="copyMessage" title="复制消息">
               <i class="bi" :class="copySuccess ? 'bi-check-lg text-success' : 'bi-clipboard'"></i>
+            </button>
+            <button class="btn btn-sm btn-icon text-danger btn-press" @click="confirmDelete" title="删除消息">
+              <i class="bi bi-trash"></i>
             </button>
             <div class="copy-tooltip" v-if="copySuccess">已复制到剪贴板</div>
           </div>
@@ -30,6 +33,7 @@
 <script>
 import { computed, ref } from 'vue'
 import { marked } from 'marked'
+import { useStore } from 'vuex'
 
 export default {
   name: 'ChatMessage',
@@ -39,7 +43,9 @@ export default {
       required: true
     }
   },
-  setup(props) {
+  emits: ['delete'],
+  setup(props, { emit }) {
+    const store = useStore()
     const isUser = computed(() => props.message.role === 'user')
     const showActions = ref(false)
 
@@ -118,6 +124,13 @@ export default {
         })
     }
 
+    // 删除消息
+    const confirmDelete = () => {
+      if (confirm('确定要删除这条消息吗？')) {
+        emit('delete', props.message.id)
+      }
+    }
+
     return {
       messageClass,
       avatarClass,
@@ -128,7 +141,8 @@ export default {
       formatTime,
       showActions,
       copyMessage,
-      copySuccess
+      copySuccess,
+      confirmDelete
     }
   }
 }
@@ -137,23 +151,23 @@ export default {
 <style scoped>
 .message {
   display: flex;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   animation: fadeIn 0.3s ease;
 }
 
 .message-avatar {
-  margin-right: 12px;
+  margin-right: 8px;
 }
 
 .avatar-circle {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border-radius: var(--radius-full);
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 1.2rem;
+  font-size: 0.9rem;
   box-shadow: var(--shadow-sm);
   transition: transform 0.2s ease;
 }
@@ -172,29 +186,30 @@ export default {
 
 .message-content {
   flex: 1;
-  max-width: calc(100% - 52px);
+  max-width: calc(100% - 40px);
 }
 
 .message-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .message-sender {
   font-weight: 500;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
 }
 
 .message-time {
-  font-size: 0.8rem;
+  font-size: 0.7rem;
+  opacity: 0.7;
 }
 
 .message-bubble {
   position: relative;
-  padding: 12px 16px;
-  border-radius: var(--radius-lg);
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   transition: all 0.2s ease;
 }
@@ -206,30 +221,31 @@ export default {
 .user-bubble {
   background-color: var(--primary-light);
   border-top-right-radius: 0;
-  border-right: 3px solid var(--primary-color);
+  border-right: 2px solid var(--primary-color);
 }
 
 .ai-bubble {
   background-color: var(--bg-tertiary);
   border-top-left-radius: 0;
-  border-left: 3px solid var(--secondary-color);
+  border-left: 2px solid var(--secondary-color);
 }
 
 .message-text {
   white-space: pre-wrap;
   word-break: break-word;
-  line-height: 1.5;
+  line-height: 1.4;
+  font-size: 0.95rem;
 }
 
 .message-actions {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 4px;
+  right: 4px;
   opacity: 0;
   transition: opacity 0.2s ease;
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: rgba(255, 255, 255, 0.8);
   border-radius: var(--radius-full);
-  padding: 4px;
+  padding: 2px;
 }
 
 .message-bubble:hover .message-actions {
@@ -237,8 +253,8 @@ export default {
 }
 
 .btn-icon {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   display: flex;
   align-items: center;
@@ -247,6 +263,7 @@ export default {
   background-color: var(--bg-tertiary);
   border: none;
   transition: background-color 0.2s ease;
+  font-size: 0.8rem;
 }
 
 .btn-icon:hover {
@@ -256,13 +273,13 @@ export default {
 
 .copy-tooltip {
   position: absolute;
-  right: 40px;
-  top: 8px;
+  right: 30px;
+  top: 4px;
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  padding: 4px 8px;
+  padding: 3px 6px;
   border-radius: var(--radius-md);
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   box-shadow: var(--shadow-sm);
   animation: fadeIn 0.3s ease;
   white-space: nowrap;
@@ -283,7 +300,7 @@ export default {
 
 .message-actions .btn {
   padding: 0;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
 }
 
 /* 代码块样式 */
@@ -291,17 +308,19 @@ export default {
   background-color: var(--neutral-800);
   color: var(--neutral-200);
   border-radius: var(--radius-md);
-  padding: 12px;
-  margin: 8px 0;
+  padding: 8px 10px;
+  margin: 6px 0;
   overflow-x: auto;
+  font-size: 0.85rem;
+  line-height: 1.4;
 }
 
 code {
-  font-family: 'Fira Code', monospace;
+  font-family: 'Fira Code', monospace, Consolas, Monaco, 'Andale Mono', monospace;
   background-color: var(--neutral-200);
-  padding: 2px 4px;
+  padding: 1px 3px;
   border-radius: var(--radius-sm);
-  font-size: 0.9em;
+  font-size: 0.85em;
 }
 
 .code-block code {

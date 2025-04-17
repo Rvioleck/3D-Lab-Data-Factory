@@ -5,7 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.elwg.ai3dbackend.model.dto.UserQueryRequest;
 import com.elwg.ai3dbackend.model.entity.User;
-import com.elwg.ai3dbackend.model.vo.LoginUserVO;
+import com.elwg.ai3dbackend.model.vo.UserDetailVO;
 import com.elwg.ai3dbackend.model.vo.UserVO;
 
 import javax.servlet.http.HttpServletRequest;
@@ -28,15 +28,15 @@ public interface UserService extends IService<User> {
     long userRegister(String userAccount, String userPassword, String checkPassword);
 
     /**
-     * 用户登录（返回LoginUserVO）
+     * 用户登录
      * 验证用户登录信息，记录登录状态，返回脱敏的用户视图对象
      *
      * @param userAccount  用户账号
      * @param userPassword 用户密码
      * @param request      HTTP请求对象，用于存储会话信息
-     * @return 登录用户视图对象
+     * @return 脱敏后的用户视图对象
      */
-    LoginUserVO userLogin(String userAccount, String userPassword, HttpServletRequest request);
+    UserVO userLogin(String userAccount, String userPassword, HttpServletRequest request);
 
     /**
      * 获取当前登录用户
@@ -48,13 +48,13 @@ public interface UserService extends IService<User> {
     User getLoginUser(HttpServletRequest request);
 
     /**
-     * 用户脱敏
+     * 将用户实体转换为视图对象
      * 移除用户敏感信息，返回可安全传输的用户视图对象
      *
-     * @param originUser 原始用户对象
+     * @param user 原始用户对象
      * @return 脱敏后的用户视图对象
      */
-    LoginUserVO getSafetyUser(User originUser);
+    UserVO toUserVO(User user);
 
     /**
      * 用户退出
@@ -75,13 +75,22 @@ public interface UserService extends IService<User> {
     UserVO getUser(Long id);
 
     /**
-     * 获取脱敏后的用户信息
-     * 将 User 对象转换为 UserVO 对象，移除敏感信息
+     * 获取用户详细信息
+     * 根据ID获取用户详细信息，并进行脱敏处理
+     *
+     * @param id 用户ID
+     * @return 用户详细视图对象
+     */
+    UserDetailVO getUserDetail(Long id);
+
+    /**
+     * 将用户实体转换为详细视图对象
+     * 移除用户敏感信息，返回包含更多信息的用户详细视图对象
      *
      * @param user 原始用户对象
-     * @return 脱敏后的用户视图对象
+     * @return 用户详细视图对象
      */
-    UserVO getUserVO(User user);
+    UserDetailVO toUserDetailVO(User user);
 
     /**
      * 获取用户列表（分页）

@@ -13,7 +13,7 @@ import com.elwg.ai3dbackend.mapper.UserMapper;
 import com.elwg.ai3dbackend.model.dto.UserQueryRequest;
 import com.elwg.ai3dbackend.model.entity.User;
 import com.elwg.ai3dbackend.model.enums.UserRoleEnum;
-import com.elwg.ai3dbackend.model.vo.LoginUserVO;
+import com.elwg.ai3dbackend.model.vo.UserDetailVO;
 import com.elwg.ai3dbackend.model.vo.UserVO;
 import com.elwg.ai3dbackend.service.UserService;
 import lombok.extern.slf4j.Slf4j;
@@ -75,14 +75,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     /**
      * 用户登录验证
-     * 验证用户账号和密码，返回脱敏后的用户视图对象
+     * 验证用户账号和密码，返回用户实体
      * 该方法仅在内部使用，不对外暴露
      *
      * @param userAccount  用户账号
      * @param userPassword 用户密码
-     * @return 脱敏后的用户视图对象
+     * @return 用户实体
      */
-    private LoginUserVO userLoginVerify(String userAccount, String userPassword) {
+    private User userLoginVerify(String userAccount, String userPassword) {
         // 1. 校验参数
         ThrowUtils.throwIf(StrUtil.hasBlank(userAccount, userPassword),
                 ErrorCode.PARAMS_ERROR, "参数为空");
@@ -104,8 +104,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
         ThrowUtils.throwIf(UserRoleEnum.BAN.getValue().equals(user.getUserRole()),
                 ErrorCode.FORBIDDEN_ERROR, "该用户已被封号");
-        // 5. 返回脱敏后的用户信息
-        return getSafetyUser(user);
+        // 5. 返回用户实体
+        return user;
     }
 
     /**
@@ -116,18 +116,19 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      * @param userAccount  用户账号
      * @param userPassword 用户密码
      * @param request      HTTP请求对象，用于存储会话信息
-     * @return 登录用户视图对象
+     * @return 脱敏后的用户视图对象
      * @throws BusinessException 登录失败时抛出异常
      */
     @Override
-    public LoginUserVO userLogin(String userAccount, String userPassword, HttpServletRequest request) {
-        // 1. 调用登录验证方法获取脱敏后的用户信息
-        LoginUserVO loginUserVO = userLoginVerify(userAccount, userPassword);
-        ThrowUtils.throwIf(loginUserVO == null, ErrorCode.SYSTEM_ERROR, "登陆失败");
-        // 2. 记录用户的登录态
-        request.getSession().setAttribute(UserConstant.USER_LOGIN_STATE, loginUserVO);
-        // 3. 直接返回用户视图对象
-        return loginUserVO;
+    public UserVO userLogin(String userAccount, String userPassword, HttpServletRequest request) {
+        // 1. 调用登录验证方法获取用户实体
+        User user = userLoginVerify(userAccount, userPassword);
+        // 4. 转换为视图对象
+        UserVO userVO = toUserVO(user);
+        // 5. 记录用户的登录态
+        request.getSession().setAttribute(UserConstant.USER_LOGIN_STATE, userVO);
+        // 6. 返回用户视图对象
+        return userVO;
     }
 
     /**
@@ -141,37 +142,37 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public User getLoginUser(HttpServletRequest request) {
         // 1. 从会话中获取用户登录状态
-        User user = (User) request.getSession().getAttribute(UserConstant.USER_LOGIN_STATE);
-        ThrowUtils.throwIf(user == null || user.getId() == null, ErrorCode.NOT_LOGIN_ERROR);
-        // 2. 防止单次会话中用户信息已经修改了，再查询一次数据库
-        user = this.getById(user.getId());
+        UserVO userVO = (UserVO) request.getSession().getAttribute(UserConstant.USER_LOGIN_STATE);
+        ThrowUtils.throwIf(userVO == null || userVO.getId() == null, ErrorCode.NOT_LOGIN_ERROR);
+        // 2. 从数据库中查询最新的用户信息
+        User user = this.getById(userVO.getId());
         ThrowUtils.throwIf(user == null, ErrorCode.NOT_LOGIN_ERROR);
         return user;
     }
 
     /**
-     * 用户脱敏
+     * 将用户实体转换为视图对象
      * 移除敏感信息，如密码等，返回可安全传输的用户视图对象
      * 保留用户ID、账号、名称、头像、角色、简介、创建时间和更新时间
      *
-     * @param originUser 原始用户对象
+     * @param user 原始用户对象
      * @return 脱敏后的用户视图对象
      */
     @Override
-    public LoginUserVO getSafetyUser(User originUser) {
-        if (originUser == null) {
+    public UserVO toUserVO(User user) {
+        if (user == null) {
             return null;
         }
-        LoginUserVO loginUserVO = new LoginUserVO();
-        loginUserVO.setId(originUser.getId());
-        loginUserVO.setUserAccount(originUser.getUserAccount());
-        loginUserVO.setUserName(originUser.getUserName());
-        loginUserVO.setUserAvatar(originUser.getUserAvatar());
-        loginUserVO.setUserRole(originUser.getUserRole());
-        loginUserVO.setUserProfile(originUser.getUserProfile());
-        loginUserVO.setCreateTime(originUser.getCreateTime());
-        loginUserVO.setUpdateTime(originUser.getUpdateTime());
-        return loginUserVO;
+        UserVO userVO = new UserVO();
+        userVO.setId(user.getId());
+        userVO.setUserAccount(user.getUserAccount());
+        userVO.setUserName(user.getUserName());
+        userVO.setUserAvatar(user.getUserAvatar());
+        userVO.setUserRole(user.getUserRole());
+        userVO.setUserProfile(user.getUserProfile());
+        userVO.setCreateTime(user.getCreateTime());
+        userVO.setUpdateTime(user.getUpdateTime());
+        return userVO;
     }
 
     /**
@@ -183,7 +184,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      */
     private String getEncryptPassword(String userPassword) {
         // 定义盐值，提高密码安全性
-        final String SALT = "elwg_ai3d_salt";
+        final String SALT = "elwg";
         // 使用MD5加密，将盐值添加到密码前后
         return DigestUtils.md5DigestAsHex((SALT + userPassword + SALT).getBytes());
     }
@@ -233,36 +234,56 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
         User user = this.getById(id);
         ThrowUtils.throwIf(user == null, ErrorCode.NOT_FOUND_ERROR, "用户不存在");
-        return getUserVO(user);
+        return toUserVO(user);
     }
 
     /**
-     * 获取脱敏后的用户信息
-     * 将 User 对象转换为 UserVO 对象，移除敏感信息
+     * 获取用户详细信息
+     * 根据ID获取用户详细信息，并进行脱敏处理
      *
-     * @param user 原始用户对象
-     * @return 脱敏后的用户视图对象
+     * @param id 用户ID
+     * @return 用户详细视图对象
      */
     @Override
-    public UserVO getUserVO(User user) {
+    public UserDetailVO getUserDetail(Long id) {
+        if (id == null || id <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户ID不合法");
+        }
+        User user = this.getById(id);
+        ThrowUtils.throwIf(user == null, ErrorCode.NOT_FOUND_ERROR, "用户不存在");
+        return toUserDetailVO(user);
+    }
+
+    /**
+     * 将用户实体转换为详细视图对象
+     * 移除用户敏感信息，返回包含更多信息的用户详细视图对象
+     *
+     * @param user 原始用户对象
+     * @return 用户详细视图对象
+     */
+    @Override
+    public UserDetailVO toUserDetailVO(User user) {
         if (user == null) {
             return null;
         }
 
-        // 创建新的用户视图对象
-        UserVO userVO = new UserVO();
+        // 创建新的用户详细视图对象
+        UserDetailVO userDetailVO = new UserDetailVO();
 
-        // 只复制非敏感字段，确保密码等敏感信息不会被复制
-        userVO.setId(user.getId());
-        userVO.setUserAccount(user.getUserAccount());
-        userVO.setUserName(user.getUserName());
-        userVO.setUserAvatar(user.getUserAvatar());
-        userVO.setUserProfile(user.getUserProfile());
-        userVO.setUserRole(user.getUserRole());
-        userVO.setCreateTime(user.getCreateTime());
-        userVO.setUpdateTime(user.getUpdateTime());
+        // 先设置基本字段（与 UserVO 相同的字段）
+        userDetailVO.setId(user.getId());
+        userDetailVO.setUserAccount(user.getUserAccount());
+        userDetailVO.setUserName(user.getUserName());
+        userDetailVO.setUserAvatar(user.getUserAvatar());
+        userDetailVO.setUserProfile(user.getUserProfile());
+        userDetailVO.setUserRole(user.getUserRole());
+        userDetailVO.setCreateTime(user.getCreateTime());
+        userDetailVO.setUpdateTime(user.getUpdateTime());
 
-        return userVO;
+        // 设置详细字段
+        userDetailVO.setEditTime(user.getEditTime());
+
+        return userDetailVO;
     }
 
     /**
@@ -301,17 +322,17 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 将 User 列表转换为 UserVO 列表
         Page<UserVO> userVOPage = new Page<>(userPage.getCurrent(), userPage.getSize(), userPage.getTotal());
         List<UserVO> userVOList = userPage.getRecords().stream()
-                .map(this::getUserVO)
+                .map(this::toUserVO)
                 .collect(Collectors.toList());
         userVOPage.setRecords(userVOList);
 
         // 复制分页相关属性
         userVOPage.setPages(userPage.getPages());
-        userVOPage.setCountId(userPage.getCountId());
-        userVOPage.setMaxLimit(userPage.getMaxLimit());
-        userVOPage.setSearchCount(userPage.isSearchCount());
-        userVOPage.setOptimizeCountSql(userPage.isOptimizeCountSql());
-        userVOPage.setOptimizeJoinOfCountSql(userPage.isOptimizeJoinOfCountSql());
+        userVOPage.setCountId(userPage.countId());
+        userVOPage.setMaxLimit(userPage.maxLimit());
+        userVOPage.setSearchCount(userPage.searchCount());
+        userVOPage.setOptimizeCountSql(userPage.optimizeCountSql());
+        userVOPage.setOptimizeJoinOfCountSql(userPage.optimizeJoinOfCountSql());
 
         return userVOPage;
     }

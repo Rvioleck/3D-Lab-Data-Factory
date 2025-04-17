@@ -21,6 +21,11 @@
                 <i class="bi bi-chat me-1"></i> 聊天
               </router-link>
             </li>
+            <li class="nav-item" v-if="isAdmin">
+              <router-link class="nav-link" to="/reconstruction">
+                <i class="bi bi-box me-1"></i> 3D重建
+              </router-link>
+            </li>
             <li class="nav-item">
               <router-link class="nav-link" to="/health">
                 <i class="bi bi-heart-pulse me-1"></i> 健康检查
@@ -43,16 +48,29 @@
                 <i class="bi bi-person-plus me-1"></i> 注册
               </router-link>
             </li>
-            <li class="nav-item" v-if="isLoggedIn">
-              <span class="nav-link text-primary">
+            <li class="nav-item dropdown" v-if="isLoggedIn">
+              <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                 <i class="bi bi-person-circle me-1"></i>
                 {{ currentUser?.userName || currentUser?.userAccount }}
-              </span>
-            </li>
-            <li class="nav-item" v-if="isLoggedIn">
-              <a class="nav-link" href="#" @click.prevent="logout">
-                <i class="bi bi-box-arrow-right me-1"></i> 退出登录
               </a>
+              <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                <li>
+                  <router-link class="dropdown-item" to="/profile">
+                    <i class="bi bi-person me-2"></i>个人资料
+                  </router-link>
+                </li>
+                <li v-if="isAdmin">
+                  <router-link class="dropdown-item" to="/admin/users">
+                    <i class="bi bi-people me-2"></i>用户管理
+                  </router-link>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                  <a class="dropdown-item" href="#" @click.prevent="logout">
+                    <i class="bi bi-box-arrow-right me-2"></i>退出登录
+                  </a>
+                </li>
+              </ul>
             </li>
           </ul>
         </div>
@@ -61,8 +79,8 @@
 
     <div class="container mb-4">
       <router-view v-slot="{ Component }">
-        <transition name="fade" mode="out-in">
-          <component :is="Component" />
+        <transition name="page" mode="out-in">
+          <component :is="Component" class="hardware-accelerated" />
         </transition>
       </router-view>
     </div>

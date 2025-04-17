@@ -1,8 +1,8 @@
 <template>
-  <transition name="fade">
-    <div class="message ai-message">
+  <transition name="slide-left" appear>
+    <div class="message ai-message hardware-accelerated">
       <div class="message-avatar">
-        <div class="avatar-circle ai-avatar">
+        <div class="avatar-circle ai-avatar pulse-animation">
           <i class="bi bi-robot"></i>
         </div>
       </div>
@@ -10,7 +10,7 @@
         <div class="message-header">
           <div class="d-flex align-items-center">
             <span class="message-sender">AI 助手</span>
-            <span class="badge bg-primary ms-2 streaming-badge">
+            <span class="badge bg-primary ms-2 streaming-badge pulse-animation">
               <i class="bi bi-lightning-charge"></i> 正在生成
             </span>
           </div>
@@ -19,14 +19,14 @@
           </span>
         </div>
         <div class="message-bubble ai-bubble">
-          <div class="message-text streaming-text">
+          <div class="message-text streaming-text hardware-accelerated">
             <div ref="markdownContent" v-html="formattedContent"></div>
-            <span class="typing-cursor"></span>
+            <span class="typing-cursor-optimized"></span>
           </div>
           <div class="typing-indicator">
-            <span class="typing-dot"></span>
-            <span class="typing-dot"></span>
-            <span class="typing-dot"></span>
+            <span class="typing-dot-optimized"></span>
+            <span class="typing-dot-optimized"></span>
+            <span class="typing-dot-optimized"></span>
           </div>
         </div>
       </div>
@@ -80,17 +80,22 @@ export default {
       }
     })
 
-    // 监听内容变化，自动滚动到底部
+    // 监听内容变化，自动滚动到底部 - 优化版本
     watch(() => props.content, () => {
-      setTimeout(() => {
+      // 使用requestAnimationFrame确保在下一帧渲染前执行
+      requestAnimationFrame(() => {
         if (markdownContent.value) {
           const element = markdownContent.value;
           const parent = element.closest('.message-bubble');
           if (parent) {
-            parent.scrollTop = parent.scrollHeight;
+            // 使用平滑滚动效果
+            parent.scrollTo({
+              top: parent.scrollHeight,
+              behavior: 'smooth'
+            });
           }
         }
-      }, 0);
+      });
     })
 
     // 组件挂载时启动定时器
@@ -120,23 +125,23 @@ export default {
 <style scoped>
 .message {
   display: flex;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   animation: fadeIn 0.3s ease;
 }
 
 .message-avatar {
-  margin-right: 12px;
+  margin-right: 8px;
 }
 
 .avatar-circle {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border-radius: var(--radius-full);
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 1.2rem;
+  font-size: 0.9rem;
   box-shadow: var(--shadow-sm);
   animation: pulse 2s infinite;
 }
@@ -147,38 +152,39 @@ export default {
 
 .message-content {
   flex: 1;
-  max-width: calc(100% - 52px);
+  max-width: calc(100% - 40px);
 }
 
 .message-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .message-sender {
   font-weight: 500;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
 }
 
 .streaming-badge {
-  font-size: 0.7rem;
-  padding: 0.25rem 0.5rem;
+  font-size: 0.65rem;
+  padding: 0.15rem 0.4rem;
   animation: pulse 2s infinite;
 }
 
 .message-time {
-  font-size: 0.8rem;
+  font-size: 0.7rem;
+  opacity: 0.7;
 }
 
 .message-bubble {
   position: relative;
-  padding: 12px 16px;
-  border-radius: var(--radius-lg);
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   transition: all 0.3s ease;
-  border-left: 3px solid var(--primary-color);
+  border-left: 2px solid var(--primary-color);
 }
 
 .ai-bubble {
@@ -189,7 +195,8 @@ export default {
 .message-text {
   white-space: pre-wrap;
   word-break: break-word;
-  line-height: 1.5;
+  line-height: 1.4;
+  font-size: 0.95rem;
 }
 
 /* 打字机效果 */
@@ -213,8 +220,8 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-top: 8px;
-  height: 20px;
+  margin-top: 6px;
+  height: 16px;
 }
 
 .typing-dot {
@@ -251,18 +258,20 @@ export default {
   background-color: var(--neutral-800);
   color: var(--neutral-200);
   border-radius: var(--radius-md);
-  padding: 12px;
-  margin: 8px 0;
+  padding: 8px 10px;
+  margin: 6px 0;
   overflow-x: auto;
-  border-left: 3px solid var(--primary-color);
+  border-left: 2px solid var(--primary-color);
+  font-size: 0.85rem;
+  line-height: 1.4;
 }
 
 code {
-  font-family: 'Fira Code', monospace;
+  font-family: 'Fira Code', monospace, Consolas, Monaco, 'Andale Mono', monospace;
   background-color: var(--neutral-200);
-  padding: 2px 4px;
+  padding: 1px 3px;
   border-radius: var(--radius-sm);
-  font-size: 0.9em;
+  font-size: 0.85em;
 }
 
 .code-block code {

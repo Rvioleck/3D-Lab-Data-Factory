@@ -1,0 +1,134 @@
+/* 加载状态相关样式 */
+
+/* 图片懒加载过渡效果 */
+img.loading {
+  opacity: 0.5;
+  filter: blur(5px);
+  transition: opacity 0.3s ease, filter 0.3s ease;
+}
+
+img.loaded {
+  opacity: 1;
+  filter: blur(0);
+}
+
+img.error {
+  opacity: 0.8;
+}
+
+/* 骨架屏加载效果 */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--neutral-200);
+  border-radius: var(--radius-md);
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.6) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: skeleton-loading 1.5s infinite;
+  will-change: transform;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* 加载中动画 */
+.loading-spinner {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(var(--primary-rgb), 0.3);
+  border-radius: 50%;
+  border-top-color: var(--primary-color);
+  animation: spin 1s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 脉冲加载效果 */
+.loading-pulse {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+  animation: pulse 1.5s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+}
+
+/* 内容加载中占位 */
+.content-placeholder {
+  padding: 20px;
+  text-align: center;
+  color: var(--neutral-500);
+}
+
+.content-placeholder .loading-text {
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+/* 加载失败状态 */
+.load-error {
+  padding: 20px;
+  text-align: center;
+  color: var(--error-color);
+}
+
+.load-error .error-icon {
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+.load-error .retry-button {
+  margin-top: 10px;
+  padding: 5px 15px;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.load-error .retry-button:hover {
+  background-color: var(--primary-hover);
+}

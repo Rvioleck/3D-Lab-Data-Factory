@@ -12,14 +12,14 @@ import com.elwg.ai3dbackend.constant.UserConstant;
 import com.elwg.ai3dbackend.exception.BusinessException;
 import com.elwg.ai3dbackend.exception.ErrorCode;
 import com.elwg.ai3dbackend.exception.ThrowUtils;
-import com.elwg.ai3dbackend.model.dto.UserAddRequest;
+import com.elwg.ai3dbackend.model.dto.UserCreateRequest;
 import com.elwg.ai3dbackend.model.dto.UserLoginRequest;
 import com.elwg.ai3dbackend.model.dto.UserQueryRequest;
 import com.elwg.ai3dbackend.model.dto.UserRegisterRequest;
 import com.elwg.ai3dbackend.model.dto.UserUpdateRequest;
 import com.elwg.ai3dbackend.model.entity.User;
 import com.elwg.ai3dbackend.model.enums.UserRoleEnum;
-import com.elwg.ai3dbackend.model.vo.LoginUserVO;
+import com.elwg.ai3dbackend.model.vo.UserDetailVO;
 import com.elwg.ai3dbackend.model.vo.UserVO;
 import com.elwg.ai3dbackend.service.UserService;
 import io.swagger.annotations.Api;
@@ -102,15 +102,15 @@ public class UserController {
      */
     @PostMapping("/login")
     @ApiOperation(value = "用户登录", notes = "验证用户身份并创建会话，返回脱敏的用户信息")
-    public BaseResponse<LoginUserVO> userLogin(@RequestBody UserLoginRequest userLoginRequest,
-                                               HttpServletRequest request) {
+    public BaseResponse<UserVO> userLogin(@RequestBody UserLoginRequest userLoginRequest,
+                                          HttpServletRequest request) {
         ThrowUtils.throwIf(userLoginRequest == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
         String userAccount = userLoginRequest.getUserAccount();
         String userPassword = userLoginRequest.getUserPassword();
         ThrowUtils.throwIf(StrUtil.hasBlank(userAccount, userPassword),
                 ErrorCode.PARAMS_ERROR, "参数为空");
-        LoginUserVO loginUserVO = userService.userLogin(userAccount, userPassword, request);
-        return ResultUtils.success(loginUserVO);
+        UserVO userVO = userService.userLogin(userAccount, userPassword, request);
+        return ResultUtils.success(userVO);
     }
 
     /**
@@ -129,11 +129,11 @@ public class UserController {
      */
     @PostMapping("/get/login")
     @ApiOperation(value = "获取当前登录用户信息", notes = "从当前会话中获取登录用户信息，用户未登录时会返回错误")
-    public BaseResponse<LoginUserVO> getLoginUser(HttpServletRequest request) {
+    public BaseResponse<UserVO> getLoginUser(HttpServletRequest request) {
         User user = userService.getLoginUser(request);
-        // 直接转换为 LoginUserVO
-        LoginUserVO loginUserVO = userService.getSafetyUser(user);
-        return ResultUtils.success(loginUserVO);
+        // 转换为 UserVO
+        UserVO userVO = userService.toUserVO(user);
+        return ResultUtils.success(userVO);
     }
 
     /**
@@ -154,27 +154,27 @@ public class UserController {
     }
 
     /**
-     * 添加用户（仅管理员可访问）
+     * 创建用户（仅管理员可访问）
      * <p>
      * 该接口只允许管理员访问，用于创建新用户。
      * 创建成功后返回新用户的ID。
      * </p>
      *
-     * @param userAddRequest 用户创建请求体
+     * @param userCreateRequest 用户创建请求体
      * @param request HTTP请求对象
      * @return 包含新用户ID的响应对象
      */
-    @PostMapping("/add")
-    @ApiOperation(value = "添加用户", notes = "仅管理员可访问")
+    @PostMapping("/create")
+    @ApiOperation(value = "创建用户", notes = "仅管理员可访问")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
-    public BaseResponse<Long> addUser(@RequestBody UserAddRequest userAddRequest, HttpServletRequest request) {
-        ThrowUtils.throwIf(userAddRequest == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
+    public BaseResponse<Long> createUser(@RequestBody UserCreateRequest userCreateRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(userCreateRequest == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
 
-        String userAccount = userAddRequest.getUserAccount();
-        String userPassword = userAddRequest.getUserPassword();
-        String checkPassword = userAddRequest.getCheckPassword();
-        String userName = userAddRequest.getUserName();
-        String userRole = userAddRequest.getUserRole();
+        String userAccount = userCreateRequest.getUserAccount();
+        String userPassword = userCreateRequest.getUserPassword();
+        String checkPassword = userCreateRequest.getCheckPassword();
+        String userName = userCreateRequest.getUserName();
+        String userRole = userCreateRequest.getUserRole();
 
         // 参数校验
         ThrowUtils.throwIf(StrUtil.isBlank(userAccount), ErrorCode.PARAMS_ERROR, "用户账号不能为空");
@@ -214,13 +214,13 @@ public class UserController {
         }
 
         // 设置用户头像
-        if (StrUtil.isNotBlank(userAddRequest.getUserAvatar())) {
-            user.setUserAvatar(userAddRequest.getUserAvatar());
+        if (StrUtil.isNotBlank(userCreateRequest.getUserAvatar())) {
+            user.setUserAvatar(userCreateRequest.getUserAvatar());
         }
 
         // 设置用户简介
-        if (StrUtil.isNotBlank(userAddRequest.getUserProfile())) {
-            user.setUserProfile(userAddRequest.getUserProfile());
+        if (StrUtil.isNotBlank(userCreateRequest.getUserProfile())) {
+            user.setUserProfile(userCreateRequest.getUserProfile());
         }
 
         // 设置编辑时间
@@ -344,17 +344,17 @@ public class UserController {
     }
 
     /**
-     * 根据ID获取用户（仅管理员可访问）
+     * 根据ID获取用户基本信息（仅管理员可访问）
      * <p>
-     * 该接口只允许管理员访问，用于获取指定用户的信息。
+     * 该接口只允许管理员访问，用于获取指定用户的基本信息。
      * 返回的用户信息已经进行脱敏处理，不包含敏感字段如密码等。
      * </p>
      *
      * @param id 用户ID
-     * @return 包含用户信息的响应对象
+     * @return 包含用户基本信息的响应对象
      */
     @PostMapping("/get")
-    @ApiOperation(value = "根据ID获取用户", notes = "仅管理员可访问")
+    @ApiOperation(value = "根据ID获取用户基本信息", notes = "仅管理员可访问")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<UserVO> getUserById(@RequestBody Long id) {
         // 参数校验
@@ -365,6 +365,31 @@ public class UserController {
         ThrowUtils.throwIf(userVO == null, ErrorCode.NOT_FOUND_ERROR, "用户不存在");
 
         return ResultUtils.success(userVO);
+    }
+
+    /**
+     * 根据ID获取用户详细信息（仅管理员可访问）
+     * <p>
+     * 该接口只允许管理员访问，用于获取指定用户的详细信息。
+     * 返回的用户信息已经进行脱敏处理，不包含敏感字段如密码等，
+     * 但包含更多的用户详细信息。
+     * </p>
+     *
+     * @param id 用户ID
+     * @return 包含用户详细信息的响应对象
+     */
+    @PostMapping("/detail")
+    @ApiOperation(value = "根据ID获取用户详细信息", notes = "仅管理员可访问")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<UserDetailVO> getUserDetailById(@RequestBody Long id) {
+        // 参数校验
+        ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR, "用户ID不合法");
+
+        // 查询用户详细信息
+        UserDetailVO userDetailVO = userService.getUserDetail(id);
+        ThrowUtils.throwIf(userDetailVO == null, ErrorCode.NOT_FOUND_ERROR, "用户不存在");
+
+        return ResultUtils.success(userDetailVO);
     }
 
     /**
@@ -439,14 +464,15 @@ public class UserController {
 
             // 创建分页对象，设置每页最大数量为100
             Page<User> page = new Page<>(1, 100);
-            page.setSearchCount(false); // 不需要再次查询总数
+            // 不需要再次查询总数，使用新API
+            page.setSearchCount(false);
 
             // 执行分页查询
             Page<User> userPage = userService.page(page, queryWrapper);
 
             // 脱敏处理
             List<UserVO> result = userPage.getRecords().stream()
-                    .map(user -> userService.getUserVO(user))
+                    .map(user -> userService.toUserVO(user))
                     .collect(Collectors.toList());
 
             return ResultUtils.success(result);
@@ -457,7 +483,7 @@ public class UserController {
 
         // 脱敏处理
         List<UserVO> result = userList.stream()
-                .map(user -> userService.getUserVO(user))
+                .map(user -> userService.toUserVO(user))
                 .collect(Collectors.toList());
 
         return ResultUtils.success(result);

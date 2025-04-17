@@ -1,6 +1,6 @@
 <template>
   <div
-    class="chat-session p-3 mb-2 d-flex justify-content-between align-items-center"
+    class="chat-session p-3 mb-2 d-flex justify-content-between align-items-center hover-lift hardware-accelerated"
     :class="{ 'active': isActive }"
     @click="selectSession"
   >
@@ -160,6 +160,8 @@ export default {
   border: 1px solid transparent;
   animation: fadeIn 0.3s ease;
   transform-origin: center;
+  padding: 0.6rem 0.8rem !important;
+  margin-bottom: 0.4rem !important;
 }
 
 .chat-session:hover {
@@ -192,9 +194,9 @@ export default {
 
 .session-icon {
   color: var(--primary-color);
-  font-size: 1.2rem;
-  width: 32px;
-  height: 32px;
+  font-size: 1rem;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -218,6 +220,7 @@ export default {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 180px;
+  font-size: 0.9rem;
 }
 
 .session-actions {
@@ -233,8 +236,8 @@ export default {
 }
 
 .btn-icon {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   display: flex;
   align-items: center;
@@ -244,6 +247,7 @@ export default {
   border: none;
   transition: all 0.2s ease;
   transform: scale(0.9);
+  font-size: 0.8rem;
 }
 
 .btn-icon:hover {

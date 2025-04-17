@@ -58,6 +58,6 @@ public class UserQueryRequest extends PageRequest implements Serializable {
     /**
      * 创建时间范围（结束）
      */
-    @ApiModelProperty(value = "创建时间范围（结束）", example = "2023-12-31 23:59:59")
+    @ApiModelProperty(value = "创建时间范围（结束）", example = "2025-12-31 23:59:59")
     private Date createTimeEnd;
 }

@@ -1,0 +1,218 @@
+/* 优化的动画效果库 */
+
+/* 基础过渡时间变量 */
+:root {
+  --transition-fast: 150ms;
+  --transition-normal: 300ms;
+  --transition-slow: 500ms;
+  
+  /* 缓动函数 */
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* 淡入淡出动画 - 优化版 */
+.fade-enter-active {
+  transition: opacity var(--transition-normal) var(--ease-out), 
+              transform var(--transition-normal) var(--ease-bounce);
+}
+
+.fade-leave-active {
+  transition: opacity var(--transition-fast) var(--ease-in),
+              transform var(--transition-fast) var(--ease-in);
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+/* 滑动动画 - 从右侧 */
+.slide-right-enter-active {
+  transition: opacity var(--transition-normal) var(--ease-out), 
+              transform var(--transition-normal) var(--ease-bounce);
+}
+
+.slide-right-leave-active {
+  transition: opacity var(--transition-fast) var(--ease-in),
+              transform var(--transition-fast) var(--ease-in);
+}
+
+.slide-right-enter-from,
+.slide-right-leave-to {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+/* 滑动动画 - 从左侧 */
+.slide-left-enter-active {
+  transition: opacity var(--transition-normal) var(--ease-out), 
+              transform var(--transition-normal) var(--ease-bounce);
+}
+
+.slide-left-leave-active {
+  transition: opacity var(--transition-fast) var(--ease-in),
+              transform var(--transition-fast) var(--ease-in);
+}
+
+.slide-left-enter-from,
+.slide-left-leave-to {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+/* 缩放动画 */
+.scale-enter-active {
+  transition: opacity var(--transition-normal) var(--ease-out), 
+              transform var(--transition-normal) var(--ease-bounce);
+}
+
+.scale-leave-active {
+  transition: opacity var(--transition-fast) var(--ease-in),
+              transform var(--transition-fast) var(--ease-in);
+}
+
+.scale-enter-from,
+.scale-leave-to {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+/* 按钮点击效果 */
+.btn-press {
+  transition: transform var(--transition-fast) var(--ease-in-out);
+}
+
+.btn-press:active {
+  transform: scale(0.96);
+}
+
+/* 悬停提升效果 */
+.hover-lift {
+  transition: transform var(--transition-normal) var(--ease-out), 
+              box-shadow var(--transition-normal) var(--ease-out);
+}
+
+.hover-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* 脉冲动画 - 优化版 */
+@keyframes pulse-optimized {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(var(--primary-rgb), 0.4);
+  }
+  70% {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 10px rgba(var(--primary-rgb), 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(var(--primary-rgb), 0);
+  }
+}
+
+.pulse-animation {
+  animation: pulse-optimized 2s infinite var(--ease-out);
+}
+
+/* 打字机光标 - 优化版 */
+@keyframes blink-optimized {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.typing-cursor-optimized {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background-color: currentColor;
+  margin-left: 2px;
+  animation: blink-optimized 1s step-end infinite;
+  vertical-align: text-bottom;
+}
+
+/* 加载中动画 - 优化版 */
+@keyframes bounce-optimized {
+  0%, 80%, 100% { 
+    transform: scale(0);
+    opacity: 0.7;
+  }
+  40% { 
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.typing-dot-optimized {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+  margin: 0 2px;
+  animation: bounce-optimized 1.4s infinite ease-in-out both;
+  will-change: transform, opacity;
+}
+
+.typing-dot-optimized:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.typing-dot-optimized:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+/* 页面过渡动画 */
+.page-enter-active {
+  transition: opacity var(--transition-normal) var(--ease-out), 
+              transform var(--transition-normal) var(--ease-out);
+}
+
+.page-leave-active {
+  transition: opacity var(--transition-fast) var(--ease-in),
+              transform var(--transition-fast) var(--ease-in);
+}
+
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+/* 列表项动画 */
+.list-item-enter-active {
+  transition: all var(--transition-normal) var(--ease-bounce);
+  transition-delay: calc(var(--i, 0) * 50ms);
+}
+
+.list-item-leave-active {
+  transition: all var(--transition-fast) var(--ease-in);
+  position: absolute;
+}
+
+.list-item-enter-from {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+.list-item-leave-to {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+/* 性能优化提示 */
+.hardware-accelerated {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}

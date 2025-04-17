@@ -1,0 +1,38 @@
+server:
+  port: 8124  # 使用不同的端口避免与开发环境冲突
+  servlet:
+    context-path: /api
+  address: 0.0.0.0
+
+spring:
+  application:
+    name: ai-3d-backend-test
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/ai_3d_test?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: root
+    password: 123456
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 15MB
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: false
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: isDelete
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# WebSocket客户端配置
+websocket:
+  server:
+    # 测试环境使用相同的WebSocket服务器URL
+    url: ws://10.0.0.2:8001/generate3d
+  connection:
+    # 测试环境使用较短的超时时间
+    timeout: 10

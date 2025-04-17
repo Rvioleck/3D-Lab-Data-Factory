@@ -1,13 +1,31 @@
 # AI 3D Backend 项目
 
-这是一个基于Spring Boot的AI 3D后端项目，提供用户管理、聊天会话管理和AI对话功能，支持流式响应。
+这是一个基于Spring Boot的AI 3D后端项目，提供用户管理、聊天会话管理和AI对话功能，支持流式响应和权限控制。
 
 ## 主要功能
 
 1. **用户管理**：注册、登录、获取用户信息
-2. **聊天会话**：创建会话、获取会话列表、删除会话
-3. **AI对话**：发送消息并获取AI回复，支持流式响应
-4. **健康检查**：系统状态监控
+   - 重构用户模块，优化实体类设计
+   - 新增 UserVO 和 UserDetailVO 分层设计，更清晰的数据层次
+   - 新增用户详情接口，支持获取更多用户信息
+2. **权限控制**：基于用户角色的权限管理，支持管理员和普通用户权限区分
+   - 新增 `AuthCheck` 注解和 `AuthInterceptor` 拦截器，实现细粒度权限控制
+   - 支持在类和方法级别进行权限校验
+3. **聊天会话**：创建会话、获取会话列表、删除会话
+   - 当前仅允许管理员访问聊天功能
+4. **AI对话**：发送消息并获取AI回复，支持流式响应
+   - 优化聊天接口，提高响应速度和稳定性
+5. **消息管理**：
+   - 支持删除单条消息，重构消息删除逻辑
+   - 自动合并连续同类型消息，提高 API 调用效率
+6. **3D重建**：上传图片并生成3D模型
+   - 使用OkHttp WebSocket客户端连接到10.0.0.2:8001的重建服务
+   - 支持同步和异步处理模式
+   - 提供简单的前端测试页面
+   - 支持上传图片、查看处理状态和获取重建结果文件
+   - 支持获取单个文件内容和图片预览
+   - 实现了自动重连和心跳检测机制
+7. **健康检查**：系统状态监控
 
 ## 技术栈
 
@@ -17,6 +35,8 @@
 - MySQL
 - DeepSeek AI API
 - Server-Sent Events (SSE)
+- WebSocket
+- OkHttp WebSocket客户端
 
 ## 项目结构
 
@@ -25,6 +45,10 @@
 │   ├── main/
 │   │   ├── java/
 │   │   │   └── com/elwg/ai3dbackend/
+│   │   │       ├── annotation/          # 注解定义
+│   │   │       │   └── AuthCheck.java   # 权限校验注解
+│   │   │       ├── aop/                 # 面向切面编程
+│   │   │       │   └── AuthInterceptor.java # 权限校验拦截器
 │   │   │       ├── common/              # 通用工具类和响应模型
 │   │   │       │   ├── BaseResponse.java
 │   │   │       │   ├── DeleteRequest.java
@@ -36,6 +60,7 @@
 │   │   │       │   ├── CorsConfig.java
 │   │   │       │   ├── DeepSeekConfig.java
 │   │   │       │   ├── JacksonConfig.java
+│   │   │       │   ├── MybatisPlusConfig.java
 │   │   │       │   ├── TransactionConfig.java
 │   │   │       │   └── WebMvcConfig.java
 │   │   │       ├── constant/            # 常量定义
@@ -58,6 +83,8 @@
 │   │   │       │   ├── dto/             # 数据传输对象
 │   │   │       │   │   ├── ChatRequest.java
 │   │   │       │   │   ├── UserLoginRequest.java
+│   │   │       │   │   ├── UserAddRequest.java
+│   │   │       │   │   ├── UserUpdateRequest.java
 │   │   │       │   │   └── UserRegisterRequest.java
 │   │   │       │   ├── entity/          # 数据库实体
 │   │   │       │   │   ├── ChatMessage.java
@@ -66,7 +93,7 @@
 │   │   │       │   ├── enums/           # 枚举类型
 │   │   │       │   │   └── UserRoleEnum.java
 │   │   │       │   └── vo/              # 视图对象
-│   │   │       │       └── LoginUserVO.java
+│   │   │       │       └── UserVO.java
 │   │   │       ├── service/             # 服务接口和实现
 │   │   │       │   ├── impl/
 │   │   │       │   │   ├── ChatServiceImpl.java
@@ -109,6 +136,15 @@ mvn clean package
 java -jar target/ai-3d-backend-0.0.1-SNAPSHOT.jar
 ```
 
+## 权限控制功能
+
+本项目实现了基于注解的权限控制功能，主要特性包括：
+
+1. 使用`@AuthCheck`注解标记需要进行权限校验的类或方法
+2. 通过AOP实现权限拦截，无需修改业务代码即可实现权限控制
+3. 支持指定必须具有的角色，如管理员角色
+4. 支持在类级别和方法级别进行权限控制
+
 ## 流式响应功能
 
 本项目实现了流式响应功能，主要特性包括：
@@ -116,6 +152,7 @@ java -jar target/ai-3d-backend-0.0.1-SNAPSHOT.jar
 1. 使用Server-Sent Events (SSE)协议实现流式数据传输
 2. 支持与DeepSeek AI API的流式集成
 3. 实现了异步处理机制，提高系统并发能力
+4. 优化消息处理逻辑，自动合并连续同类型消息，提高API调用效率
 
 ## 注意事项
 

@@ -77,6 +77,21 @@
               </div>
             </form>
           </div>
+
+          <!-- 添加管理员账号提示 -->
+          <div class="card-footer bg-light p-3 mt-3">
+            <div class="admin-info">
+              <h6><i class="bi bi-info-circle me-2"></i>管理员账号信息</h6>
+              <p class="small mb-1">聊天功能当前仅对管理员开放，您可以使用以下账号登录：</p>
+              <div class="d-flex align-items-center">
+                <span class="badge bg-primary me-2">管理员</span>
+                <code>admin / 12345678</code>
+                <button class="btn btn-sm btn-link ms-2" @click="fillAdminCredentials">
+                  使用此账号
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -98,6 +113,12 @@ export default {
     const userPassword = ref('')
     const error = ref('')
     const isLoading = ref(false)
+
+    // 填充管理员账号
+    const fillAdminCredentials = () => {
+      userAccount.value = 'admin'
+      userPassword.value = '12345678' // 假设这是预设的管理员密码
+    }
     const showPassword = ref(false)
     const passwordInput = ref(null)
 

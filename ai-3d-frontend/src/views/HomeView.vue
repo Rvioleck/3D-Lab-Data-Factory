@@ -1,118 +1,72 @@
 <template>
   <div class="home-view">
     <div class="container">
-      <div class="row align-items-center min-vh-75">
-        <div class="col-lg-6 py-5">
-          <h1 class="display-4 fw-bold mb-4">AI 3D 平台</h1>
-          <p class="lead mb-4">
-            基于先进的人工智能技术，为您提供全方位的 3D 资源管理和智能对话服务。支持 3D 模型管理、智能对话以及更多功能。
-          </p>
-          <div class="features mb-5">
-            <div class="feature-item">
-              <i class="bi bi-lightning-charge-fill text-primary"></i>
-              <span>快速响应</span>
-            </div>
-            <div class="feature-item">
-              <i class="bi bi-shield-check text-primary"></i>
-              <span>安全可靠</span>
-            </div>
-            <div class="feature-item">
-              <i class="bi bi-chat-square-text-fill text-primary"></i>
-              <span>智能对话</span>
-            </div>
-            <div class="feature-item">
-              <i class="bi bi-box-fill text-primary"></i>
-              <span>3D 资源管理</span>
-            </div>
-          </div>
-          <div class="d-flex flex-wrap gap-3">
-            <router-link to="/chat" class="btn btn-primary btn-lg rounded-pill">
-              <i class="bi bi-chat-dots me-2"></i>开始聊天
-            </router-link>
-            <router-link to="/register" class="btn btn-outline-primary btn-lg rounded-pill">
-              <i class="bi bi-person-plus me-2"></i>注册账号
-            </router-link>
-          </div>
-        </div>
-        <div class="col-lg-6 d-none d-lg-block">
-          <div class="hero-image text-center">
-            <img src="../assets/ai-chat.svg" alt="AI聊天" class="img-fluid" />
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="bg-light py-5 mt-4">
-      <div class="container">
-        <div class="row justify-content-center">
-          <div class="col-lg-8 text-center">
-            <h2 class="mb-4">为什么选择我们的 AI 3D 平台？</h2>
-            <p class="lead mb-5">
-              我们的平台集成了最新的大语言模型技术和 3D 资源管理功能，为您提供全方位的服务支持。
-            </p>
-          </div>
-        </div>
-
-        <div class="row g-4">
-          <div class="col-md-4">
-            <div class="card h-100 border-0 shadow-sm">
-              <div class="card-body p-4 text-center">
-                <div class="feature-icon mb-3">
-                  <i class="bi bi-cpu"></i>
-                </div>
-                <h4>3D 资源管理</h4>
-                <p class="text-muted">
-                  全面的 3D 模型和资源管理功能，支持上传、分类和组织您的 3D 资产。
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-md-4">
-            <div class="card h-100 border-0 shadow-sm">
-              <div class="card-body p-4 text-center">
-                <div class="feature-icon mb-3">
-                  <i class="bi bi-clock-history"></i>
-                </div>
-                <h4>全天候服务</h4>
-                <p class="text-muted">
-                  24小时随时待命，无论何时何地，都能为您提供即时的帮助。
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-md-4">
-            <div class="card h-100 border-0 shadow-sm">
-              <div class="card-body p-4 text-center">
-                <div class="feature-icon mb-3">
-                  <i class="bi bi-graph-up"></i>
-                </div>
-                <h4>持续进步</h4>
-                <p class="text-muted">
-                  我们的AI模型不断学习和优化，服务质量会越来越好。
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="container py-5">
       <div class="row justify-content-center">
-        <div class="col-lg-8 text-center">
-          <h2 class="mb-4">准备好开始了吗？</h2>
-          <p class="lead mb-5">
-            立即注册账号，体验 AI 3D 平台带来的全方位服务。
-          </p>
-          <div class="d-flex justify-content-center gap-3">
-            <router-link to="/register" class="btn btn-primary btn-lg rounded-pill">
-              <i class="bi bi-person-plus me-2"></i>免费注册
-            </router-link>
-            <router-link to="/login" class="btn btn-outline-primary btn-lg rounded-pill">
-              <i class="bi bi-box-arrow-in-right me-2"></i>立即登录
-            </router-link>
+        <div class="col-md-8">
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <h2 class="card-title text-center mb-4">欢迎使用 AI 3D 平台</h2>
+
+              <div class="user-info mb-4">
+                <div class="d-flex align-items-center">
+                  <div class="avatar me-3">
+                    <i class="bi bi-person-circle" style="font-size: 3rem;"></i>
+                  </div>
+                  <div>
+                    <h5>{{ currentUser.userName || currentUser.userAccount }}</h5>
+                    <div class="badge" :class="roleClass">{{ roleText }}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="features">
+                <h4 class="mb-3">可用功能</h4>
+
+                <!-- 所有用户可见功能 -->
+                <div class="feature-card mb-3 p-3 border rounded">
+                  <h5><i class="bi bi-person me-2"></i>用户信息</h5>
+                  <p class="text-muted">查看和管理您的个人信息</p>
+                  <button class="btn btn-outline-primary btn-sm">
+                    进入
+                  </button>
+                </div>
+
+                <!-- 仅管理员可见功能 -->
+                <div v-if="isAdmin" class="feature-card mb-3 p-3 border rounded admin-feature">
+                  <h5><i class="bi bi-chat-dots me-2"></i>AI 聊天</h5>
+                  <p class="text-muted">使用AI助手进行对话（仅管理员可用）</p>
+                  <router-link to="/chat" class="btn btn-primary btn-sm">
+                    开始聊天
+                  </router-link>
+                </div>
+
+                <!-- 用户管理功能 -->
+                <div v-if="isAdmin" class="feature-card mb-3 p-3 border rounded admin-feature">
+                  <h5><i class="bi bi-people me-2"></i>用户管理</h5>
+                  <p class="text-muted">管理系统用户（仅管理员可用）</p>
+                  <router-link to="/admin/users" class="btn btn-primary btn-sm">
+                    管理用户
+                  </router-link>
+                </div>
+
+                <!-- 非管理员提示 -->
+                <div v-else class="feature-card mb-3 p-3 border rounded disabled-feature">
+                  <h5><i class="bi bi-chat-dots me-2"></i>AI 聊天</h5>
+                  <p class="text-muted">此功能当前仅对管理员开放</p>
+                  <button class="btn btn-secondary btn-sm" disabled>
+                    需要管理员权限
+                  </button>
+                </div>
+
+                <div class="feature-card mb-3 p-3 border rounded">
+                  <h5><i class="bi bi-heart-pulse me-2"></i>系统状态</h5>
+                  <p class="text-muted">查看系统健康状态</p>
+                  <router-link to="/health" class="btn btn-outline-primary btn-sm">
+                    查看
+                  </router-link>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -121,77 +75,74 @@
 </template>
 
 <script>
+import { computed } from 'vue'
+import { useStore } from 'vuex'
+
 export default {
-  name: 'HomeView'
+  name: 'HomeView',
+  setup() {
+    const store = useStore()
+
+    const currentUser = computed(() => store.getters['user/currentUser'] || {})
+    const isAdmin = computed(() => store.getters['user/isAdmin'])
+
+    const roleText = computed(() => {
+      if (!currentUser.value) return '未登录'
+
+      switch (currentUser.value.userRole) {
+        case 'admin': return '管理员'
+        case 'user': return '普通用户'
+        case 'ban': return '已封禁'
+        default: return '未知角色'
+      }
+    })
+
+    const roleClass = computed(() => {
+      if (!currentUser.value) return 'bg-secondary'
+
+      switch (currentUser.value.userRole) {
+        case 'admin': return 'bg-primary'
+        case 'user': return 'bg-success'
+        case 'ban': return 'bg-danger'
+        default: return 'bg-secondary'
+      }
+    })
+
+    return {
+      currentUser,
+      isAdmin,
+      roleText,
+      roleClass
+    }
+  }
 }
 </script>
 
 <style scoped>
 .home-view {
-  overflow-x: hidden;
+  padding: 2rem 0;
 }
 
-.min-vh-75 {
-  min-height: 75vh;
-}
-
-.features {
-  display: flex;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-}
-
-.feature-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background-color: var(--bg-tertiary);
-  padding: 0.5rem 1rem;
-  border-radius: var(--radius-full);
-  font-weight: 500;
-}
-
-.feature-icon {
-  width: 70px;
-  height: 70px;
-  border-radius: 50%;
-  background-color: var(--primary-light);
+.avatar {
   color: var(--primary-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto;
-  font-size: 2rem;
 }
 
-.card {
-  border-radius: var(--radius-lg);
-  transition: transform 0.3s ease;
+.admin-feature {
+  background-color: var(--primary-light);
+  border-color: var(--primary-color) !important;
 }
 
-.card:hover {
-  transform: translateY(-5px);
+.disabled-feature {
+  background-color: var(--bg-tertiary);
+  opacity: 0.8;
 }
 
-.hero-image {
-  animation: float 6s ease-in-out infinite;
+.feature-card {
+  transition: all 0.3s ease;
 }
 
-@keyframes float {
-  0% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-20px);
-  }
-  100% {
-    transform: translateY(0px);
-  }
-}
-
-@media (max-width: 992px) {
-  .min-vh-75 {
-    min-height: auto;
-  }
+.feature-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
 }
 </style>

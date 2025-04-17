@@ -35,6 +35,24 @@ const routes = [
     name: 'Health',
     component: () => import('../views/HealthView.vue'),
     meta: { requiresAuth: false }
+  },
+  {
+    path: '/admin/users',
+    name: 'UserManagement',
+    component: () => import('../views/admin/UserManagementView.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: () => import('../views/ProfileView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/reconstruction',
+    name: 'Reconstruction',
+    component: () => import('../views/ReconstructionView.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
   }
 ]
 

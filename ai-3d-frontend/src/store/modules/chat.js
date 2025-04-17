@@ -1,4 +1,4 @@
-import { createSession, listSessions, listMessages, deleteSession, sendMessage, streamChat } from '../../api/chat'
+import { createSession, listSessions, listMessages, deleteSession, deleteMessage, sendMessage, streamChat } from '../../api/chat'
 
 const state = {
   sessions: [],
@@ -110,6 +110,20 @@ const actions = {
     }
   },
 
+  async deleteMessage({ commit }, messageId) {
+    try {
+      const response = await deleteMessage(messageId)
+      if (response.code === 0 && response.data) {
+        commit('REMOVE_MESSAGE', messageId)
+        return Promise.resolve(true)
+      } else {
+        return Promise.reject(response.message || '删除消息失败')
+      }
+    } catch (error) {
+      return Promise.reject(error.message || '删除消息失败')
+    }
+  },
+
   // 重命名会话
   async renameSession({ commit, state }, { id, name }) {
     // 在实际项目中需要调用API更新后端
@@ -127,8 +141,14 @@ const actions = {
     commit('CLEAR_MESSAGES', sessionId)
   },
 
-  setCurrentSession({ commit }, sessionId) {
+  setCurrentSession({ commit }, sessionId, options = {}) {
+    const { keepMessages = false } = options || {};
     commit('SET_CURRENT_SESSION', sessionId)
+
+    // 如果不需要保留消息，则清除临时消息
+    if (!keepMessages && sessionId !== 'temp-session') {
+      commit('CLEAR_TEMP_MESSAGES')
+    }
   },
 
   startStreaming({ commit }) {
@@ -140,11 +160,15 @@ const actions = {
     commit('APPEND_STREAMING_CONTENT', content)
   },
 
-  finishStreaming({ commit, state }) {
+  finishStreaming({ commit, state }, options = {}) {
+    const { keepContent = false } = options;
+
     // 将流式消息添加到消息列表
     if (state.streamingMessage.trim()) {
       // 如果当前会话存在且不是首次对话模式，正常添加消息
-      if (state.currentSessionId && state.messages.some(m => m.sessionId === state.currentSessionId)) {
+      if (state.currentSessionId &&
+          state.currentSessionId !== 'temp-session' &&
+          state.messages.some(m => m.sessionId === state.currentSessionId)) {
         const message = {
           id: Date.now().toString(),
           sessionId: state.currentSessionId,
@@ -154,11 +178,13 @@ const actions = {
         }
         commit('ADD_MESSAGE', message)
       }
-      // 如果是首次对话，消息会在加载真实会话时自动加载
+      // 如果是首次对话，消息会在ChatView中手动添加
     }
 
-    // 先设置流式消息为空，再关闭流式状态，确保流式组件先被移除
-    commit('SET_STREAMING_MESSAGE', '')
+    // 如果不需要保留流式消息内容，则清空
+    if (!keepContent) {
+      commit('SET_STREAMING_MESSAGE', '')
+    }
 
     // 延迟一小段时间再关闭流式状态，确保消息渲染完成
     setTimeout(() => {
@@ -307,6 +333,11 @@ const mutations = {
     }
   },
 
+  // 清除临时会话的消息
+  CLEAR_TEMP_MESSAGES(state) {
+    state.messages = state.messages.filter(msg => msg.sessionId !== 'temp-session')
+  },
+
   SET_IS_STREAMING(state, isStreaming) {
     state.isStreaming = isStreaming
   },
@@ -317,6 +348,19 @@ const mutations = {
 
   APPEND_STREAMING_CONTENT(state, content) {
     state.streamingMessage += content
+  },
+
+  REMOVE_MESSAGE(state, messageId) {
+    state.messages = state.messages.filter(msg => msg.id !== messageId)
+  },
+
+  // 更新临时消息的会话ID
+  UPDATE_TEMP_MESSAGES_SESSION_ID(state, newSessionId) {
+    state.messages.forEach(msg => {
+      if (msg.sessionId === 'temp-session') {
+        msg.sessionId = newSessionId;
+      }
+    });
   }
 }
 
