@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.elwg.ai3dbackend.annotation.AuthCheck;
 import com.elwg.ai3dbackend.common.BaseResponse;
 import com.elwg.ai3dbackend.common.DeleteRequest;
+import com.elwg.ai3dbackend.common.GetRequest;
 import com.elwg.ai3dbackend.common.ResultUtils;
 import com.elwg.ai3dbackend.constant.UserConstant;
 import com.elwg.ai3dbackend.exception.BusinessException;
@@ -31,10 +32,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
@@ -350,18 +348,19 @@ public class UserController {
      * 返回的用户信息已经进行脱敏处理，不包含敏感字段如密码等。
      * </p>
      *
-     * @param id 用户ID
+     * @param getRequest 包含用户ID的获取请求对象
      * @return 包含用户基本信息的响应对象
      */
     @PostMapping("/get")
     @ApiOperation(value = "根据ID获取用户基本信息", notes = "仅管理员可访问")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
-    public BaseResponse<UserVO> getUserById(@RequestBody Long id) {
+    public BaseResponse<UserVO> getUserById(@RequestBody GetRequest getRequest) {
         // 参数校验
-        ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR, "用户ID不合法");
+        ThrowUtils.throwIf(getRequest == null || getRequest.getId() == null || getRequest.getId() <= 0,
+                ErrorCode.PARAMS_ERROR, "用户ID不合法");
 
         // 查询用户
-        UserVO userVO = userService.getUser(id);
+        UserVO userVO = userService.getUser(getRequest.getId());
         ThrowUtils.throwIf(userVO == null, ErrorCode.NOT_FOUND_ERROR, "用户不存在");
 
         return ResultUtils.success(userVO);
@@ -375,18 +374,19 @@ public class UserController {
      * 但包含更多的用户详细信息。
      * </p>
      *
-     * @param id 用户ID
+     * @param getRequest 包含用户ID的获取请求对象
      * @return 包含用户详细信息的响应对象
      */
     @PostMapping("/detail")
     @ApiOperation(value = "根据ID获取用户详细信息", notes = "仅管理员可访问")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
-    public BaseResponse<UserDetailVO> getUserDetailById(@RequestBody Long id) {
+    public BaseResponse<UserDetailVO> getUserDetailById(@RequestBody GetRequest getRequest) {
         // 参数校验
-        ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR, "用户ID不合法");
+        ThrowUtils.throwIf(getRequest == null || getRequest.getId() == null || getRequest.getId() <= 0,
+                ErrorCode.PARAMS_ERROR, "用户ID不合法");
 
         // 查询用户详细信息
-        UserDetailVO userDetailVO = userService.getUserDetail(id);
+        UserDetailVO userDetailVO = userService.getUserDetail(getRequest.getId());
         ThrowUtils.throwIf(userDetailVO == null, ErrorCode.NOT_FOUND_ERROR, "用户不存在");
 
         return ResultUtils.success(userDetailVO);

@@ -1,6 +1,18 @@
 <template>
   <div class="home-view">
     <div class="container">
+      <!-- 资源统计 -->
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <h4 class="card-title mb-3">资源统计</h4>
+              <ResourceStatistics />
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="row justify-content-center">
         <div class="col-md-8">
           <div class="card shadow-sm">
@@ -31,21 +43,23 @@
                   </button>
                 </div>
 
-                <!-- 仅管理员可见功能 -->
+
+
+                <!-- 管理员功能 -->
+                <div v-if="isAdmin" class="feature-card mb-3 p-3 border rounded admin-feature">
+                  <h5><i class="bi bi-tools me-2"></i>3D重建</h5>
+                  <p class="text-muted">创建和管理三维重建任务（仅管理员可用）</p>
+                  <router-link to="/reconstruction" class="btn btn-primary btn-sm">
+                    进入重建
+                  </router-link>
+                </div>
+
+                <!-- AI聊天功能 -->
                 <div v-if="isAdmin" class="feature-card mb-3 p-3 border rounded admin-feature">
                   <h5><i class="bi bi-chat-dots me-2"></i>AI 聊天</h5>
                   <p class="text-muted">使用AI助手进行对话（仅管理员可用）</p>
                   <router-link to="/chat" class="btn btn-primary btn-sm">
                     开始聊天
-                  </router-link>
-                </div>
-
-                <!-- 用户管理功能 -->
-                <div v-if="isAdmin" class="feature-card mb-3 p-3 border rounded admin-feature">
-                  <h5><i class="bi bi-people me-2"></i>用户管理</h5>
-                  <p class="text-muted">管理系统用户（仅管理员可用）</p>
-                  <router-link to="/admin/users" class="btn btn-primary btn-sm">
-                    管理用户
                   </router-link>
                 </div>
 
@@ -56,6 +70,24 @@
                   <button class="btn btn-secondary btn-sm" disabled>
                     需要管理员权限
                   </button>
+                </div>
+
+
+
+                <div class="feature-card mb-3 p-3 border rounded">
+                  <h5><i class="bi bi-images me-2"></i>图片库</h5>
+                  <p class="text-muted">浏览和管理图片资源</p>
+                  <router-link to="/images" class="btn btn-outline-primary btn-sm">
+                    浏览图片
+                  </router-link>
+                </div>
+
+                <div class="feature-card mb-3 p-3 border rounded">
+                  <h5><i class="bi bi-box me-2"></i>3D模型库</h5>
+                  <p class="text-muted">浏览和管理三维模型</p>
+                  <router-link to="/models" class="btn btn-outline-primary btn-sm">
+                    浏览模型
+                  </router-link>
                 </div>
 
                 <div class="feature-card mb-3 p-3 border rounded">
@@ -77,9 +109,13 @@
 <script>
 import { computed } from 'vue'
 import { useStore } from 'vuex'
+import ResourceStatistics from '@/components/ResourceStatistics.vue'
 
 export default {
   name: 'HomeView',
+  components: {
+    ResourceStatistics
+  },
   setup() {
     const store = useStore()
 

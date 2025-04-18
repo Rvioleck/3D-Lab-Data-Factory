@@ -1,297 +1,273 @@
-服务端设计文档 (Python FastAPI + WebSocket) - 修订版
+# 设计文档：3D重建模块重构（V2.0）
 
-1. 目标
+## 1. 引言
 
-提供一个单一的 WebSocket 端点。客户端连接后，发送图片二进制数据。服务端使用默认参数执行 AI 模型推理（图像预处理、pipeline、3D 生成）。服务端通过同一 WebSocket 连接，依次发送：
+### 1.1 目的
 
-    标识下一个数据块内容的 JSON 消息 ({"type": "result_part", "name": "pixel_images.png", ...})
+本文档详细说明了项目中3D重建模块的重构设计。涵盖了建议的架构、组件职责、API规范、数据模型和实现注意事项，以实现预期的改进。
 
-    生成的 pixel_images.png 的二进制数据
+### 1.2 范围
 
-    标识下一个数据块内容的 JSON 消息 ({"type": "result_part", "name": "xyz_images.png", ...})
+本文档涵盖端到端3D重建工作流程的重构，包括：
 
-    生成的 xyz_images.png 的二进制数据
+- 前端交互，用于图像上传和结果展示。
+- 后端服务逻辑，用于任务管理、通信和存储。
+- Python AI服务接口和处理逻辑。
+- 前端 <-> 后端 和 后端 <-> Python服务之间的通信协议。
+- 集成腾讯云对象存储（COS）。
 
-    标识下一个数据块内容的 JSON 消息 ({"type": "result_part", "name": "output3d.zip", ...})
+### 1.3 背景
 
-    生成的 output3d.zip 的二进制数据
+现有的3D重建模块使用WebSocket进行后端与Python服务的通信，并通过前端轮询获取结果。尽管功能正常，但该架构在可靠性、可扩展性和用户体验方面存在挑战。此次重构旨在通过采用现代且可靠的架构模式解决这些问题。
 
-    最终表示任务完成的 JSON 状态消息 ({"type": "status", "status": "completed"})
+### 1.4 目标
 
-服务端不存储任何跨连接的任务状态或文件（generate3d 生成的临时文件在发送后会被清理）。
+- 将后端与Python之间的WebSocket通信替换为HTTP异步请求+回调机制。
+- 使用服务器发送事件（SSE）替代前端轮询，实现实时状态和结果更新。
+- 在腾讯云对象存储（COS）上标准化文件存储，移除本地文件依赖。
+- 提高系统的可靠性、容错能力和可扩展性。
+- 通过更快的反馈和渐进式结果加载提升用户体验。
+- 维持或改进Python服务提供的核心3D重建功能。
 
-2. 架构
+### 1.5 目标受众
 
-   Web框架: FastAPI (提供 WebSocket 端点)
+软件开发人员（前端、后端、Python）、质量保证工程师、系统架构师、项目经理。
 
-   Web服务器: Uvicorn (运行 FastAPI 应用)
+---
 
-   通信协议: WebSocket (用于建立持久连接、双向传输二进制数据和多种 JSON 消息)
+## 2. 当前架构及局限性
 
-   核心依赖: PyTorch, PIL, NumPy, Rembg, io, json, asyncio, 以及你的项目特定库 (imagedream, model, pipelines, inference) (zipfile 可能仍被 generate3d 内部使用，但服务端本身不再进行最终打包)
+### 2.1 当前状态（概述）
 
-   并发控制: 使用 asyncio.Lock 确保同一时间只有一个 WebSocket 连接在执行耗时的模型推理和结果发送部分（保护 GPU 资源）。
+- 前端通过HTTP上传图像。
+- 后端与Python服务建立WebSocket连接并发送图像数据。
+- Python服务处理图像并通过同一WebSocket返回多个结果部分（图像、压缩包等）。
+- 后端可能将结果存储在本地和/或上传到COS。
+- 前端通过HTTP轮询检查任务状态并从后端获取结果URL。
+
+### 2.2 局限性
 
-3. WebSocket 端点
-
-   WS /generate3d: 处理 3D 生成任务的 WebSocket 连接
-
-        连接生命周期:
-
-            连接建立: 客户端向 ws://<server_ip>:<port>/generate3d 发起连接，服务端接受。
-
-            接收图片: 服务端等待接收第一个二进制消息帧，并假定其为完整的图片数据。
-
-            发送处理中状态: 收到图片后，服务端立即发送一条 JSON 文本消息，告知客户端处理已开始，例如：{"type": "status", "status": "processing"}。
-
-            执行AI处理与分步发送 (受锁保护):
-
-                获取 asyncio.Lock。
-
-                从内存中的图片数据加载 (io.BytesIO, PIL.Image)。
-
-                执行 preprocess_image (使用默认参数)。
-
-                执行 pipeline (使用默认参数 scale, step)，获取 np_imgs_combined 和 np_xyzs_combined。
-
-                发送 Pixel Images:
-
-                    将 np_imgs_combined 转换为 PNG 格式保存在内存 (io.BytesIO)。
-
-                    发送标识 JSON: {"type": "result_part", "name": "pixel_images.png", "content_type": "image/png"}。
-
-                    发送内存中的 PNG 二进制数据。
-
-                    释放 PNG 内存。
-
-                发送 XYZ Images:
-
-                    将 np_xyzs_combined 转换为 PNG 格式保存在内存 (io.BytesIO)。
-
-                    发送标识 JSON: {"type": "result_part", "name": "xyz_images.png", "content_type": "image/png"}。
-
-                    发送内存中的 PNG 二进制数据。
-
-                    释放 PNG 内存。
-
-                发送 3D Output:
-
-                    执行 generate3d (使用默认参数)，获取生成的 output3d.zip 文件路径 (该文件可能位于临时位置)。
-
-                    发送标识 JSON: {"type": "result_part", "name": "output3d.zip", "content_type": "application/zip"}。
-
-                    从磁盘读取 output3d.zip 文件内容。
-
-                    发送 ZIP 文件的二进制数据。
-
-                    清理: 删除磁盘上的临时 output3d.zip 文件。
-
-                释放 asyncio.Lock。
-
-            发送完成状态: 在成功发送完所有三个结果部分后，发送一条 JSON 文本消息，告知客户端任务成功，例如：{"type": "status", "status": "completed"}。
-
-            (可选) 关闭连接: 服务器可以选择在发送完成状态后关闭连接。
-
-        错误处理:
-
-            如果在处理过程中的任何步骤（图片解码、AI处理、任何一部分结果的生成或发送）发生错误，服务端应捕获异常。
-
-            立即发送一条 JSON 文本消息，告知客户端任务失败及错误原因（如果连接仍然可用），例如：{"type": "status", "status": "failed", "error": "Detailed error message"}。
-
-            处理流程终止，不再发送后续结果部分或 "completed" 状态。
-
-            服务器随后可以关闭连接。
-
-        消息格式:
-
-            客户端 -> 服务器:
-
-                单个二进制消息帧 (图片数据)。
-
-            服务器 -> 客户端 (按顺序):
-
-                JSON 文本消息 (初始状态): {"type": "status", "status": "processing"}
-
-                JSON 文本消息 (结果部分标识): {"type": "result_part", "name": "pixel_images.png", "content_type": "image/png"}
-
-                单个二进制消息帧 (pixel_images.png 数据)
-
-                JSON 文本消息 (结果部分标识): {"type": "result_part", "name": "xyz_images.png", "content_type": "image/png"}
-
-                单个二进制消息帧 (xyz_images.png 数据)
-
-                JSON 文本消息 (结果部分标识): {"type": "result_part", "name": "output3d.zip", "content_type": "application/zip"}
-
-                单个二进制消息帧 (output3d.zip 数据)
-
-                JSON 文本消息 (最终状态): {"type": "status", "status": "completed"}
-
-                或者 (出错时):
-
-                    在出错点之后，发送 JSON 文本消息 (错误状态): {"type": "status", "status": "failed", "error": "..."}
-
-4. 关键实现细节
-
-   无状态: 服务器不维护任何 task_id 或跨连接的任务状态。每个 WebSocket 连接处理一个独立的任务流。
-
-   默认参数: 所有 AI 处理步骤的参数均使用代码中硬编码的默认值。
-
-   内存与临时文件处理: 输入图片在内存中处理。中间 PNG 结果在内存中生成后立即发送并释放。generate3d 的输出 (output3d.zip) 产生在磁盘临时位置，读取发送后必须清理。需要监控内存和临时磁盘空间使用。
-
-   渐进式发送: 结果按顺序分部分发送，利用 WebSocket 的多消息能力，允许客户端实现渐进式加载。
-
-   并发与排队: FastAPI 可同时接受多个 WebSocket 连接。asyncio.Lock 确保模型推理和结果发送部分的串行执行，形成隐式的处理队列。
-
-   模型加载: AI 模型在 FastAPI 应用启动时全局加载一次。加载失败会阻止后续处理。
-
-   原子性: 整个任务的成功由最后的 completed 状态标识。如果在发送任何一部分时失败，客户端应认为整个任务失败。
-
-   超时: 考虑 WebSocket 连接空闲超时和模型推理超时。
-
-客户端设计文档 (Java + OkHttp WebSocket Client) - 修订版
-
-1. 目标
-
-使用 OkHttp WebSocket 客户端连接到 Python 服务端点，发送图片二进制数据，接收状态更新，并按顺序接收服务端分步发送的多个结果部分（PNG 图像和 ZIP 文件），根据标识信息进行处理和展示/保存。
-
-2. 连接策略
-
-   单一连接模式: 建议维护一个 WebSocket 连接处理所有请求。
-
-   按需连接: 首次请求或断线后尝试连接。
-
-   最小重试: 连接失败时快速反馈。
-
-   心跳检测: （可选）使用 OkHttp 的 ping 机制维持连接活跃。
-
-3. 交互流程
-
-   准备图片: 获取待处理图片。
-
-   检查/建立连接: 尝试连接 ws://<server_ip>:<port>/generate3d。失败则通知用户。
-
-   发送图片: 读取图片为 byte[]，通过 WebSocket 发送二进制消息。（可选） 为此请求生成本地上下文或 ID，用于追踪后续响应。
-
-   处理服务器消息 (核心变化): 在 WebSocket 的 onMessage 回调中处理：
-
-        文本消息处理:
-
-            解析收到的 JSON 文本。
-
-            如果 {"type": "status"}:
-
-                根据 status 值 ("processing", "completed", "failed") 更新 UI 或请求状态。
-
-                如果是 "completed"，表示所有结果部分已成功接收（或至少服务端已发送完毕），标记整个请求成功完成。
-
-                如果是 "failed"，根据 error 信息通知用户，标记整个请求失败。
-
-            如果 {"type": "result_part"}:
-
-                记录状态: 暂存 name (e.g., "pixel_images.png") 和 content_type。这表明下一个接收到的二进制消息将是这个文件的数据。
-
-        二进制消息处理 (onMessage 收到 ByteString 或 byte[]):
-
-            关联数据: 使用上一个收到的 result_part 消息中记录的 name 和 content_type 来识别这个二进制数据块。
-
-            处理数据:
-
-                如果 name 是 "pixel_images.png" 或 "xyz_images.png"，将 byte[] 解码为图像，更新 UI 显示。
-
-                如果 name 是 "output3d.zip"，将 byte[] 提供给用户下载或进行后续处理。
-
-            清除状态: 处理完二进制数据后，清除暂存的 result_part 信息，准备接收下一个 result_part 或 status 消息。
-
-   错误处理:
-
-        连接失败/发送失败：通知用户。
-
-        收到 {"status": "failed"} 消息：标记请求失败。
-
-        连接意外关闭 (onClosed, onFailure)：处理所有进行中的请求，标记为失败。
-
-        协议错误（如收到未预期的二进制数据，即没有先收到 result_part 标识）：记录错误，可能需要重置状态或断开连接。
-
-4. 关键实现细节
-
-   OkHttp WebSocket 实现:
-
-        使用 OkHttp 库提供的 WebSocket 和 WebSocketListener 接口。
-
-        在 WebSocketListener 的 onOpen, onMessage(String text), onMessage(ByteString bytes), onClosing, onClosed, onFailure 回调方法中实现核心的连接管理和消息处理逻辑。
-
-   客户端请求流控制 (重要):
-
-        推荐策略：单一活动请求。 在客户端（例如 ViewModel 或 Presenter 层）维护一个状态标记，表示当前是否有请求正在进行中（从发送图片到收到最终 completed 或 failed 状态）。
-
-        当用户尝试发起新请求时，检查此状态：
-
-            如果空闲，则发送图片，并将状态标记为“处理中”。
-
-            如果“处理中”，则阻止发送新请求（例如，禁用按钮，显示提示信息），避免向服务端并发发送多个处理任务。
-
-        当收到 completed 或 failed 状态消息后，将状态标记改回“空闲”，允许用户发起新请求。
-
-        这种方式简化了客户端逻辑，与服务端串行处理模型保持一致。
-
-   消息处理与状态机 (针对渐进式结果):
-
-        在 WebSocketListener 实现内部（或其关联的处理器类中），维护一个临时的状态变量，用于存储上一个收到的 result_part 消息中的 name 和 content_type。
-
-        onMessage(String text):
-
-            解析 JSON。
-
-            如果 type == "status"，根据 status 更新全局请求状态（处理中/完成/失败），并相应更新 UI。如果是最终状态，则重置活动请求状态（见上一点）。
-
-            如果 type == "result_part"，将 name 和 content_type 存入上述临时状态变量，准备接收紧随其后的二进制数据。
-
-        onMessage(ByteString bytes):
-
-            检查临时状态变量中是否存有 name 和 content_type。
-
-            如果有，说明这是预期的结果部分数据。根据 name (e.g., "pixel_images.png") 处理 bytes（解码图像、存为文件等），更新对应 UI。
-
-            处理完毕后，必须清除临时状态变量（设为 null 或默认值），表示当前二进制块已处理，等待下一个 result_part 或 status 消息。
-
-            如果没有，则说明收到了未预期的二进制数据，应记录错误。
-
-   渐进式 UI 更新:
-
-        充分利用分步接收的特性。在 onMessage(ByteString bytes) 中成功识别并处理某个结果部分（如 pixel_images.png）后，立即将数据显示在 UI 上（例如，更新 ImageView）。
-
-        当收到 output3d.zip 数据后，可以激活下载按钮或传递给 3D 渲染组件。
-
-        这提供了比等待所有内容完成后一次性展示更快的用户感知响应。
-
-   线程安全:
-
-        OkHttp 的 WebSocketListener 回调方法默认在后台 I/O 线程执行。
-
-        任何需要更新 UI 组件（如 ImageView, TextView, Button 状态）的操作，或者访问/修改需要在主线程维护的共享数据，都必须通过 runOnUiThread (Android), Platform.runLater (JavaFX), SwingUtilities.invokeLater (Swing) 等机制切换回主/UI 线程执行。
-
-   连接管理与资源:
-
-        连接复用: 应用程序生命周期内尽量复用同一个 WebSocket 实例，避免频繁创建和销毁连接带来的网络和系统开销。
-
-        生命周期: 在适当的时机（如应用启动、首次需要连接时）创建 WebSocket 连接，在应用退出或不再需要时调用 websocket.close() 显式关闭连接，释放资源。
-
-        断线处理与重连: 在 onFailure 或 onClosed 回调中处理连接中断。可以实现一个有限次的按需重连机制：当下次需要发送请求时，如果发现连接已断开，则尝试重新建立连接。避免后台无限自动重连。
-
-        心跳/保活: 优先依赖服务端配置的 ws-ping-interval（Uvicorn 默认会发送 Ping）。客户端 OkHttp 默认会响应 Pong。通常不需要客户端实现应用层心跳。如果需要客户端主动发起，可配置 OkHttp 的 pingInterval。
-
-        内存注意: 处理 ByteString/byte[] 数据时，特别是较大的图片或 ZIP 文件，要确保及时处理并允许垃圾回收器回收内存，避免 OOM。解码后的图像对象 (如 Android Bitmap) 也要注意管理。
-
-   超时处理:
-
-        连接建立超时: 配置 OkHttpClient 的 connectTimeoutMillis。
-
-        请求整体超时: 由于 WebSocket 是长连接，依赖 TCP/IP 和 Ping/Pong 保活，传统的读写超时不太适用。应实现一个应用层面的超时监控：在发送图片后启动一个定时器。如果在设定的合理时间内（例如 2-5 分钟，取决于模型处理时间）没有收到最终的 completed 或 failed 状态，则认为任务超时。此时应：
-
-            通知用户任务超时。
-
-            更新内部状态为“失败/超时”。
-
-            主动关闭当前的 WebSocket 连接 (websocket.close()) 以清理状态并中断可能仍在进行的服务器处理（服务器端代码也应能处理客户端断开）。
-
-            重置客户端状态，允许发起新请求。
+- **WebSocket复杂性**：维护持久的WebSocket连接复杂，容易断开，难以水平扩展。跨连接的状态管理增加了开销。
+- **轮询低效**：前端轮询产生大量网络流量，增加后端负载，提供延迟更新，导致次优的用户体验。
+- **紧耦合**：WebSocket在后端和Python服务生命周期之间创建了紧密耦合。
+- **可靠性问题**：WebSocket断开可能导致消息丢失或任务不完整，缺乏强大的恢复机制。
+
+---
+
+## 3. 拟议架构
+
+### 3.1 概述
+
+重构后的架构采用异步、事件驱动的方式，使用标准HTTP协议、服务器发送事件（SSE）和云对象存储（COS）。
+
+- 前端 <-> 后端：HTTP用于上传，SSE用于实时更新。
+- 后端 <-> Python服务：HTTP异步请求用于任务提交，HTTP回调用于结果/状态。
+- 存储：集中于腾讯COS。
+
+### 3.2 架构图
+
+```mermaid
+graph LR
+    A[前端 (浏览器)] -- 1a. HTTP POST /picture/upload --> B(后端 - Java);
+    B -- 1b. 存储图片 --> D{对象存储 (COS)};
+    B -- 1c. 返回图片信息（包含图片ID和URL） --> A;
+    A -- 2a. HTTP POST /api/reconstruction/create-from-image (包含图片ID) --> B;
+    B -- 2b. 返回 TaskID, SSE URL --> A;
+    A -- 3. GET /api/reconstruction/events/{taskId} (SSE 连接) --> B;
+    B -- 4. HTTP POST /generate3d (异步任务) --> C(Python 服务 - FastAPI);
+    C -- 5. (后台处理) --> C;
+    C -- 6a. POST /api/reconstruction/callback/result/{taskId} (pixel_images.png) --> B;
+    B -- 7a. 存储到 COS, 更新数据库 --> D;
+    B -- 8a. 推送 SSE (结果: pixel_images) --> A;
+    C -- 6b. POST /api/reconstruction/callback/result/{taskId} (xyz_images.png) --> B;
+    B -- 7b. 存储到 COS, 更新数据库 --> D;
+    B -- 8b. 推送 SSE (结果: xyz_images) --> A;
+    C -- 6c. POST /api/reconstruction/callback/result/{taskId} (output3d.zip) --> B;
+    B -- 7c. 存储到 COS, 更新数据库 --> D;
+    B -- 8c. 推送 SSE (结果: output3d) --> A;
+    C -- 6d. POST /api/reconstruction/callback/status (完成/失败) --> B;
+    B -- 7d. 更新数据库状态 --> B;
+    B -- 8d. 推送 SSE (状态: 完成/失败) --> A;
+```
+
+### 3.3 核心流程
+
+1. **图片上传**：前端通过HTTP POST /picture/upload将图像文件发送到后端。后端将图片存储到COS，在数据库中创建图片记录，并返回包含图片ID和URL的完整图片信息。
+2. **任务创建与响应**：前端通过HTTP POST /api/reconstruction/create-from-image发送已上传图片的ID，后端生成唯一taskId，在reconstruction_tasks表中创建记录（状态：PENDING或PROCESSING），并立即向前端返回taskId和sseUrl（例如，/api/reconstruction/events/{taskId}）。
+3. **SSE连接**：前端使用收到的sseUrl建立SSE连接（EventSource）与后端端点（GET /api/reconstruction/events/{taskId}）。
+4. **任务分发（异步）**：后端异步发送HTTP POST请求到Python服务的/generate3d端点，包含图像数据（或存储在COS中的URL）、taskId和后端的回调基础URL。
+5. **Python处理**：Python服务接收任务，向后端的HTTP请求返回已接受状态，并在后台开始3D重建过程。
+6. **迭代结果回调**：Python服务生成每个结果文件（如pixel_images.png、xyz_images.png、output3d.zip）时，向后端的回调端点（/api/reconstruction/callback/result/{taskId}）发送HTTP POST请求，通过multipart/form-data发送文件数据。
+7. **后端回调处理（结果）**：后端的回调控制器接收文件，将其上传到COS中的指定路径（例如，reconstruction/{taskId}/pixel_images.png），并在reconstruction_tasks表中更新对应taskId的URL字段。
+8. **SSE推送（结果）**：成功存储文件并更新数据库后，后端使用SseEmitterService通过对应的SSE连接发送结果事件，包含taskId、文件名和新生成的COS URL。
+9. **状态回调**：Python处理完成后（成功或失败），通过HTTP POST请求向后端的状态回调端点（/api/reconstruction/callback/status）发送JSON格式的数据，包含taskId、最终状态（completed或failed）和可选的错误消息。
+10. **后端回调处理（状态）**：后端的回调控制器接收状态更新，在reconstruction_tasks表中更新对应taskId的状态和错误消息字段。
+11. **SSE推送（状态）**：更新数据库后，后端通过SSE连接发送状态事件，指示完成或失败。如果任务完成，后端可能会关闭对应taskId的SSE连接。
+12. **前端更新**：前端的EventSource监听器接收结果和状态事件，更新UI，显示进度、预览图像（通过COS URL逐步可用）、启用最终3D模型的下载/查看器，并显示最终状态/错误消息。
+
+---
+
+## 4. 详细设计
+
+### 4.1 Python服务（FastAPI）
+
+- **职责**：通过HTTP接收图像处理任务，执行3D重建，通过HTTP回调发送结果和状态，管理GPU资源。
+- **API端点**：
+
+  - POST /generate3d：
+    - 请求：multipart/form-data包含图像（文件）、task_id（字符串）、callback_url（字符串）。
+    - 响应（成功 202 Accepted）：{"status": "accepted", "task_id": "..."}。
+    - 响应（错误 4xx/5xx）：标准FastAPI错误响应。
+  - GET /health：
+    - 响应（成功 200 OK）：{"status": "healthy", "models_loaded": true/false}。
+    - 响应（错误 503 Service Unavailable）：{"status": "unhealthy", ...}。
+- **回调逻辑**：
+
+  - 使用异步HTTP客户端（如httpx）。
+  - 结果回调（POST {callback_url}/result/{taskId}）：通过multipart/form-data发送名称（文件名）和文件（二进制内容）。实现失败重试。
+  - 状态回调（POST {callback_url}/status）：发送application/json格式的数据，包含{"taskId": "...", "status": "completed|failed", "error": "..."}。实现失败重试。
+- **并发**：使用asyncio.Lock序列化对GPU密集型处理步骤的访问。
+- **临时文件**：确保清理通过回调发送后生成的任何本地中间文件（如output3d.zip）。
+
+### 4.2 后端服务（Java/Spring Boot）
+
+- **职责**：处理前端请求，管理图片和重建任务生命周期（数据库），与Python服务通信（异步HTTP），处理Python回调，管理SSE连接，与COS交互。
+- **关键组件/服务**：
+  - PictureController：处理图片上传和管理相关的API端点（/picture/upload、/picture/{id}、/picture/list/page等）。
+  - ReconstructionController：处理公共API端点（/api/reconstruction/create-from-image、/api/reconstruction/events、/api/reconstruction/status）。
+  - ReconstructionCallbackController：处理由Python服务调用的内部回调端点（/api/reconstruction/callback/result、/api/reconstruction/callback/status）。
+  - EventStreamService：管理按taskId映射的SSE连接（SseEmitter实例），处理事件发送、超时和错误。
+  - ReconstructionHttpService：客户端服务，通过WebClient或异步RestTemplate/OkHttp发送异步HTTP请求到Python的/generate3d端点。
+  - PictureService：管理数据库中Picture实体的CRUD操作。
+  - ReconstructionTaskService：管理数据库中ReconstructionTask实体的CRUD操作和状态更新。
+  - FileStorageService：用于将文件（InputStreams）上传到腾讯COS并生成URL的接口/实现。
+  - ModelService（可选）：管理重建完成后生成的模型数据。
+
+### 4.3 前端（Vue.js）
+
+- **职责**：提供图像上传UI，管理图片库，创建3D重建任务，建立/管理SSE连接，监听并响应服务器事件，逐步显示进度和结果，处理错误。
+- **关键组件**：
+  - PictureView.vue（图片上传、图片列表显示）
+  - ReconstructionView.vue（创建重建任务、状态显示）
+  - ModelViewer.vue（显示3D模型）
+  - SseService.js（管理SSE连接）
+  - Vuex模块（管理图片和重建任务状态）
+- **交互流程**：
+
+  - **图片上传流程**：
+    - 用户使用文件输入上传图像。
+    - 调用后端/picture/upload API。
+    - 成功后：存储图片信息（ID、URL等）并显示在图片库中。
+  - **3D重建流程**：
+    - 用户从图片库中选择图片并点击"创建3D模型"。
+    - 调用后端/api/reconstruction/create-from-image API，传入图片ID。
+    - 成功后：存储taskId，获取sseUrl。
+    - 实例化EventSource(sseUrl)。
+    - 实现onopen、onerror、onmessage处理器。
+    - onmessage：解析event.type（如果使用）或从event.data（如果是JSON）解析事件名称。解析event.data（JSON）。根据状态和结果事件更新Vuex存储或组件状态（更新状态文本、图像预览src、启用下载/查看器）。
+    - onerror：处理连接错误，可能实现重试逻辑或回退到/api/reconstruction/status/{taskId} API。
+- **状态管理**：使用Vuex或组件状态跟踪任务状态、结果URL和错误消息。
+
+### 4.4 数据模型（数据库）
+
+- 表：reconstruction_tasks（示例名称，如果有现有表如model、picture可以调整/使用）
+- 列：
+  - task_id（VARCHAR/UUID，主键）
+  - user_id（VARCHAR/BIGINT，外键 - 如果适用）
+  - status（VARCHAR/ENUM：PENDING、PROCESSING、COMPLETED、FAILED）
+  - original_image_url（VARCHAR，可空） - COS中的URL
+  - pixel_images_url（VARCHAR，可空） - COS中的URL
+  - xyz_images_url（VARCHAR，可空） - COS中的URL
+  - output_zip_url（VARCHAR，可空） - COS中的URL（包含obj、mtl、纹理）
+  - error_message（TEXT，可空）
+  - created_at（TIMESTAMP）
+  - updated_at（TIMESTAMP）
+  - （如果需要，考虑添加字段跟踪Python处理的开始/结束时间）
+
+### 4.5 数据模型（对象存储 - COS）
+
+- 存储桶：your-project-bucket（适当配置）
+- 路径结构：reconstruction/{taskId}/{filename}
+  - 示例：reconstruction/abc-123-def-456/pixel_images.png
+  - 示例：reconstruction/abc-123-def-456/output3d.zip
+- 权限：适当配置存储桶/对象ACL，用于后端写入访问，可能为前端检索提供公共读取访问（或签名URL）。
+
+---
+
+## 5. 非功能性需求
+
+- **性能**：
+  - 后端/upload响应时间：< 500ms（不包括图像传输时间）。
+  - SSE事件交付延迟：应接近实时（< 1-2秒，后端处理后）。
+  - Python处理时间：取决于模型复杂性和输入图像大小（记录预期范围）。
+- **可扩展性**：
+  - 后端服务应无状态（除了SSE连接）且水平可扩展。
+  - Python服务理想情况下应无状态且水平可扩展（GPU亲和性可能需要考虑）。
+  - COS提供了固有的存储可扩展性。
+- **可靠性**：
+  - 在Python->后端回调中实现带退避的重试。
+  - 所有服务中的强大错误处理和日志记录。
+  - 前端应优雅处理SSE断开（例如，自动重连或回退）。
+  - 考虑数据库事务管理以实现原子更新。
+- **安全性**：
+  - 安全回调端点：实现机制（如共享密钥、HMAC签名、JWT令牌在头中）以确保回调来自受信任的Python服务。
+  - 安全COS访问：使用适当的凭据和策略。如果结果不应公开，则为前端访问生成限时签名URL。
+  - 标准安全实践用于API端点（输入验证、身份验证、授权）。
+
+---
+
+## 6. 实施计划（高层次阶段）
+
+- **后端 - API & 核心逻辑**：
+  - 实现/picture/upload端点用于图片上传。
+  - 实现/api/reconstruction/create-from-image、/api/reconstruction/events、/api/reconstruction/status端点。
+  - 实现EventStreamService。
+  - 实现数据库实体（ReconstructionTask）和ReconstructionTaskService。
+  - 实现FileStorageService以与COS交互。
+- **Python服务 - API & 回调**：
+  - 实现/generate3d HTTP端点。
+  - 集成后台任务处理。
+  - 实现HTTP回调逻辑（send_result_callback、send_status_callback）使用httpx。
+  - 调整核心AI处理以触发回调。
+- **后端 - 回调 & 集成**：
+  - 实现ReconstructionCallbackController（/api/reconstruction/callback/result、/api/reconstruction/callback/status）。
+  - 实现ReconstructionHttpService调用Python API。
+  - 集成组件：/api/reconstruction/create-from-image触发调用Python，回调更新DB/COS并推送SSE事件。
+- **前端**：
+  - 实现图片上传逻辑，调用/picture/upload API。
+  - 实现图片库管理组件，显示已上传的图片。
+  - 实现创建重建任务逻辑，调用/api/reconstruction/create-from-image API。
+  - 实现SSE连接处理（EventSource）。
+  - 实现事件监听器以根据状态和结果事件更新UI状态。
+  - 更新结果显示组件（图像预览、3D查看器/下载器）。
+- **测试**：
+  - 单元测试用于单个组件/服务。
+  - 集成测试用于后端 <-> Python通信（包括回调）。
+  - 端到端测试模拟用户流程。
+  - 负载/压力测试（可选但推荐）。
+- **部署**：部署更新后的后端、Python服务和前端。配置环境变量（COS密钥、回调URL等）。
+
+---
+
+## 7. 风险和缓解措施
+
+- **风险**：Python服务回调失败（网络问题、后端宕机）。
+  - **缓解措施**：在Python的回调机制中实现带指数退避的强大重试逻辑。持久记录失败。考虑死信队列或手动对账流程以应对严重失败。
+- **风险**：后端在回调处理期间失败（COS错误、数据库错误）。
+  - **缓解措施**：后端回调端点应在可能的情况下保持幂等性。向Python返回适当的5xx错误以触发重试。实现详细的日志记录和监控。
+- **风险**：SSE连接断开；前端错过更新。
+  - **缓解措施**：前端EventSource应处理onerror并尝试重新连接。提供可选的GET /api/reconstruction/status/{taskId}端点作为用户手动检查/刷新状态的回退。
+- **风险**：Python处理挂起或静默失败，未发送最终状态回调。
+  - **缓解措施**：在后端实现超时机制。如果在任务分发后合理时间内未收到完成或失败回调，将任务标记为FAILED（超时）在数据库中，并通过SSE通知前端。
+- **风险**：回调端点存在安全漏洞。
+  - **缓解措施**：为回调端点实现身份验证/授权（例如，基于共享密钥的HMAC签名检查）。
+
+---
+
+## 8. 开放问题/未来考虑
+
+- 详细的重试策略（尝试次数、退避因子）。
+- 回调的具体安全机制（HMAC、Token？）。
+- 如果负载显著增加或未来需要更复杂的任务编排，是否需要专用的消息队列（如RabbitMQ、Kafka）？（当前的HTTP回调在此特定用例中更简单）。
+- 显示进度和中间结果的详细UI设计。
+- 监控和告警策略。

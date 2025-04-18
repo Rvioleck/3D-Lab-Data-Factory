@@ -318,7 +318,9 @@ export default {
     const loadMessages = async (sessionId) => {
       isLoadingMessages.value = true
       try {
-        await store.dispatch('chat/fetchMessages', sessionId)
+        console.log('开始加载会话消息, sessionId:', sessionId)
+        const result = await store.dispatch('chat/fetchMessages', sessionId)
+        console.log('消息加载结果:', result)
 
         // 等待视图更新
         await nextTick()
@@ -330,7 +332,14 @@ export default {
         scrollToBottom(true)
       } catch (error) {
         console.error('加载消息失败:', error)
-        alert('加载消息失败: ' + error)
+        // 显示更详细的错误信息
+        if (error.response) {
+          console.error('响应数据:', error.response.data)
+          console.error('状态码:', error.response.status)
+          alert(`加载消息失败: ${error.message}\n状态码: ${error.response.status}`)
+        } else {
+          alert('加载消息失败: ' + error)
+        }
       } finally {
         isLoadingMessages.value = false
       }
@@ -395,8 +404,14 @@ export default {
           // 异步调用流式响应，不等待完成
           streamChat(message, { first: true }, {
             onMessage: (content) => {
-              store.dispatch('chat/appendStreamingContent', content)
-              scrollToBottom(true, 'newChatMessagesContainer')
+              console.log('收到流式消息:', content)
+              // 处理流式消息
+              if (content) {
+                // 将内容添加到流式消息中
+                store.dispatch('chat/appendStreamingContent', content)
+                // 滚动到底部
+                scrollToBottom(true, 'newChatMessagesContainer')
+              }
             },
             onDone: async () => {
               // 保存当前的流式消息内容

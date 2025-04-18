@@ -84,15 +84,22 @@ const actions = {
 
   async fetchMessages({ commit }, sessionId) {
     try {
+      console.log('store: 开始获取消息, sessionId:', sessionId)
       const response = await listMessages(sessionId)
+      console.log('store: 收到消息响应:', response)
+
       if (response.code === 0) {
+        console.log('store: 消息数据:', response.data)
         commit('SET_MESSAGES', response.data)
         return Promise.resolve(response.data)
       } else {
+        console.error('store: 获取消息失败, 错误代码:', response.code, '错误信息:', response.message)
         return Promise.reject(response.message || '获取消息列表失败')
       }
     } catch (error) {
-      return Promise.reject(error.message || '获取消息列表失败')
+      console.error('store: 获取消息异常:', error)
+      // 将原始错误对象传递出去，以便上层组件可以获取更详细的错误信息
+      return Promise.reject(error)
     }
   },
 
@@ -347,7 +354,15 @@ const mutations = {
   },
 
   APPEND_STREAMING_CONTENT(state, content) {
-    state.streamingMessage += content
+    // 处理流式内容
+    if (content) {
+      // 将新内容追加到现有流式消息中
+      state.streamingMessage += content;
+
+      // 打印当前流式消息状态
+      console.log('收到新token:', content);
+      console.log('当前流式消息长度:', state.streamingMessage.length);
+    }
   },
 
   REMOVE_MESSAGE(state, messageId) {

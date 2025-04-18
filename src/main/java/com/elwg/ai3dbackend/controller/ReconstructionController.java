@@ -3,36 +3,45 @@ package com.elwg.ai3dbackend.controller;
 import com.elwg.ai3dbackend.annotation.AuthCheck;
 import com.elwg.ai3dbackend.common.BaseResponse;
 import com.elwg.ai3dbackend.common.ResultUtils;
+import com.elwg.ai3dbackend.constant.TaskStatus;
 import com.elwg.ai3dbackend.exception.BusinessException;
 import com.elwg.ai3dbackend.exception.ErrorCode;
 import com.elwg.ai3dbackend.exception.ThrowUtils;
-import com.elwg.ai3dbackend.model.dto.ReconstructionResponse;
-import com.elwg.ai3dbackend.service.ModelFileService;
-import com.elwg.ai3dbackend.service.StorageService;
-import com.elwg.ai3dbackend.service.WebSocketService;
-import com.elwg.ai3dbackend.service.WebSocketService.ResultPartCallback;
-import com.elwg.ai3dbackend.service.impl.StorageServiceFactory;
+
+import com.elwg.ai3dbackend.model.dto.reconstruction.ReconstructionTaskDTO;
+import com.elwg.ai3dbackend.model.dto.reconstruction.ReconstructionUploadResponse;
+import com.elwg.ai3dbackend.model.entity.Picture;
+import com.elwg.ai3dbackend.model.entity.ReconstructionTask;
+import com.elwg.ai3dbackend.model.entity.User;
+import com.elwg.ai3dbackend.service.EventStreamService;
+import com.elwg.ai3dbackend.service.FileStorageService;
+import com.elwg.ai3dbackend.service.PictureService;
+import com.elwg.ai3dbackend.service.ReconstructionHttpService;
+import com.elwg.ai3dbackend.service.ReconstructionTaskService;
+import com.elwg.ai3dbackend.service.UserService;
+
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 /**
  * 3D重建控制器
@@ -41,321 +50,254 @@ import java.util.concurrent.TimeoutException;
  * </p>
  */
 @RestController
-@RequestMapping("/reconstruction")
+@RequestMapping("/api/reconstruction")
 @Api(tags = "3D重建接口", description = "提供3D重建相关的功能，包括上传图片和获取重建结果")
 @Slf4j
 public class ReconstructionController {
 
     @Resource
-    private WebSocketService webSocketService;
+    private UserService userService;
 
     @Resource
-    private ModelFileService modelFileService;
+    private PictureService pictureService;
 
     @Resource
-    private StorageServiceFactory storageServiceFactory;
+    private ReconstructionHttpService reconstructionHttpService;
 
-    // 存储正在进行的渐进式任务
-    private final ConcurrentHashMap<String, CompletableFuture<String>> progressiveTasks = new ConcurrentHashMap<>();
+    @Resource
+    private ReconstructionTaskService reconstructionTaskService;
+
+    @Resource
+    private EventStreamService eventStreamService;
+
+    @Resource
+    private FileStorageService fileStorageService;
+
+    @Value("${server.servlet.context-path:}")
+    private String contextPath;
+
+    @Value("${server.port:8080}")
+    private String serverPort;
+
+
 
     /**
-     * 上传图片进行3D重建（异步模式）
-     * <p>
-     * 接收用户上传的图片，发送到WebSocket服务进行3D重建，并返回任务ID。
-     * 这是一个异步接口，会立即返回，客户端需要轮询任务状态。
-     * </p>
+     * 创建3D重建任务
      *
-     * @param file 上传的图片文件
-     * @return 包含任务ID的响应对象
+     * @param imageUrl 图片URL或路径
+     * @param name 模型名称（可选）
+     * @param request HTTP请求
+     * @return 任务ID和SSE URL
      */
-    @PostMapping("/upload")
-    @ApiOperation(value = "上传图片进行3D重建（异步）", notes = "上传图片并异步处理，返回任务ID，需要轮询状态")
-    public BaseResponse<ReconstructionResponse> uploadImage(@RequestParam("file") MultipartFile file) {
-        // 检查文件是否为空
-        ThrowUtils.throwIf(file.isEmpty(), ErrorCode.PARAMS_ERROR, "上传的文件不能为空");
+    @PostMapping("/create")
+    @ApiOperation(value = "创建3D重建任务", notes = "使用已上传的图片创建3D重建任务，返回任务ID和SSE URL")
+    @AuthCheck(mustRole = "admin")
+    public BaseResponse<ReconstructionUploadResponse> createReconstructionTask(
+            @RequestParam("imageUrl") String imageUrl,
+            @RequestParam(value = "name", required = false) String name,
+            HttpServletRequest request) {
 
-        // 检查文件类型
-        String contentType = file.getContentType();
-        ThrowUtils.throwIf(contentType == null || !contentType.startsWith("image/"),
-                ErrorCode.PARAMS_ERROR, "只支持上传图片文件");
+        // 获取当前登录用户
+        User loginUser = userService.getLoginUser(request);
+        if (loginUser == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR);
+        }
 
         try {
+            // 检查图片URL
+            if (imageUrl == null || imageUrl.isEmpty()) {
+                throw new BusinessException(ErrorCode.PARAMS_ERROR, "图片URL不能为空");
+            }
+
             // 生成任务ID
             String taskId = UUID.randomUUID().toString().replace("-", "");
 
-            // 获取图片数据
-            byte[] imageData = file.getBytes();
+            // 创建重建任务记录
+            ReconstructionTask task = reconstructionTaskService.createTask(
+                    taskId, loginUser.getId(), null, imageUrl);
 
-            // 检查WebSocket连接状态
-            if (!webSocketService.isConnected()) {
-                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "WebSocket服务未连接");
+            // 构建回调URL
+            String callbackUrl = getCallbackUrl(request);
+
+            // 获取图片数据
+            byte[] imageData;
+            try {
+                // 尝试从存储服务中获取图片数据
+                // 如果是完整URL，提取路径部分
+                String imagePath = imageUrl;
+                if (imageUrl.startsWith("http")) {
+                    // 假设路径是URL的最后部分，例如 "images/xxx/image.jpg"
+                    imagePath = imageUrl.substring(imageUrl.indexOf("/images/"));
+                }
+                imageData = fileStorageService.getFileData(imagePath);
+            } catch (IOException e) {
+                log.error("Failed to get image data for URL: {}", imageUrl, e);
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "获取图片数据失败：" + e.getMessage());
             }
 
-            // 创建结果部分回调
-            ResultPartCallback callback = new ResultPartCallback() {
-                @Override
-                public void onResultPart(String name, String contentType, byte[] data) {
-                    try {
-                        // 处理结果部分
-                        ReconstructionResponse response = modelFileService.processResultPart(taskId, name, contentType, data);
-                        log.info("Task {} received result part: {}, size: {} bytes", taskId, name, data.length);
-                    } catch (IOException e) {
-                        log.error("Failed to process result part {} for task {}", name, taskId, e);
-                    }
-                }
+            // 异步发送图片到Python服务
+            CompletableFuture.runAsync(() -> {
+                try {
+                    // 更新任务状态为处理中
+                    reconstructionTaskService.updateTaskStatus(taskId, TaskStatus.PROCESSING, null);
 
-                @Override
-                public void onStatusUpdate(String status, String error) {
-                    log.info("Task {} status update: {}, error: {}", taskId, status, error);
-                }
-            };
+                    // 发送SSE状态更新
+                    eventStreamService.sendStatusEvent(taskId, TaskStatus.PROCESSING, null);
 
-            // 发送图片数据到WebSocket服务并渐进式处理结果
-            CompletableFuture<String> future = webSocketService.sendImageAndProcessResult(imageData, taskId, callback);
-            progressiveTasks.put(taskId, future);
-
-            // 当任务完成或失败时清理
-            future.whenComplete((result, ex) -> {
-                progressiveTasks.remove(taskId);
-                if (ex != null) {
-                    log.error("Task {} failed", taskId, ex);
-                } else {
-                    log.info("Task {} completed with status: {}", taskId, result);
+                    // 发送图片到Python服务
+                    reconstructionHttpService.sendImageForReconstruction(imageData, taskId, callbackUrl)
+                            .thenAccept(status -> {
+                                log.info("Image sent to Python service for task: {}, status: {}", taskId, status);
+                            })
+                            .exceptionally(ex -> {
+                                log.error("Failed to send image to Python service for task: {}", taskId, ex);
+                                // 更新任务状态为失败
+                                reconstructionTaskService.updateTaskStatus(taskId, TaskStatus.FAILED, ex.getMessage());
+                                // 发送SSE状态更新
+                                eventStreamService.sendStatusEvent(taskId, TaskStatus.FAILED, ex.getMessage());
+                                return null;
+                            });
+                } catch (Exception e) {
+                    log.error("Failed to process image for task: {}", taskId, e);
+                    // 更新任务状态为失败
+                    reconstructionTaskService.updateTaskStatus(taskId, TaskStatus.FAILED, e.getMessage());
+                    // 发送SSE状态更新
+                    eventStreamService.sendStatusEvent(taskId, TaskStatus.FAILED, e.getMessage());
                 }
             });
 
             // 构建响应对象
-            ReconstructionResponse response = new ReconstructionResponse();
+            ReconstructionUploadResponse response = new ReconstructionUploadResponse();
             response.setTaskId(taskId);
-            response.setStatus("processing");
+            response.setSseUrl(contextPath + "/api/reconstruction/events/" + taskId);
 
             return ResultUtils.success(response);
-        } catch (IOException e) {
-            log.error("Failed to process image", e);
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "图片处理失败：" + e.getMessage());
+        } catch (Exception e) {
+            log.error("Failed to create reconstruction task", e);
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "创建重建任务失败：" + e.getMessage());
         }
+    }
+
+    /**
+     * SSE事件流
+     *
+     * @param taskId 任务ID
+     * @return SSE发射器
+     */
+    @GetMapping("/events/{taskId}")
+    @ApiOperation(value = "SSE事件流", notes = "建立SSE连接，接收任务状态和结果更新")
+    public SseEmitter events(@PathVariable String taskId) {
+        log.info("Creating SSE connection for task: {}", taskId);
+
+        // 创建SSE发射器
+        SseEmitter emitter = eventStreamService.createEmitter(taskId);
+
+        // 检查任务是否存在
+        ReconstructionTask task = reconstructionTaskService.getTaskByTaskId(taskId);
+        if (task == null) {
+            // 发送错误事件
+            eventStreamService.sendStatusEvent(taskId, TaskStatus.FAILED, "Task not found");
+            eventStreamService.completeEmitter(taskId);
+            return emitter;
+        }
+
+        // 如果任务已经有状态，立即发送
+        eventStreamService.sendStatusEvent(taskId, task.getStatus(), task.getErrorMessage());
+
+        // 如果任务已经有结果文件，立即发送
+        if (task.getPixelImagesUrl() != null) {
+            eventStreamService.sendResultEvent(taskId, "pixel_images.png", task.getPixelImagesUrl());
+        }
+        if (task.getXyzImagesUrl() != null) {
+            eventStreamService.sendResultEvent(taskId, "xyz_images.png", task.getXyzImagesUrl());
+        }
+        if (task.getOutputZipUrl() != null) {
+            eventStreamService.sendResultEvent(taskId, "output3d.zip", task.getOutputZipUrl());
+        }
+
+        // 如果任务已经完成或失败，完成SSE连接
+        if (TaskStatus.COMPLETED.equals(task.getStatus()) || TaskStatus.FAILED.equals(task.getStatus())) {
+            eventStreamService.completeEmitter(taskId);
+        }
+
+        return emitter;
     }
 
     /**
      * 获取任务状态
-     * <p>
-     * 根据任务ID获取3D重建任务的状态和已接收的结果文件。
-     * </p>
      *
      * @param taskId 任务ID
-     * @return 包含任务状态和结果文件URL的响应对象
+     * @return 任务状态和结果
      */
     @GetMapping("/status/{taskId}")
-    @ApiOperation(value = "获取任务状态", notes = "根据任务ID获取3D重建任务的状态和已接收的结果文件")
-    public BaseResponse<ReconstructionResponse> getTaskStatus(@PathVariable String taskId) {
-        // 检查任务ID是否存在
-        ThrowUtils.throwIf(taskId == null || taskId.isEmpty(), ErrorCode.PARAMS_ERROR, "任务ID不能为空");
+    @ApiOperation(value = "获取任务状态", notes = "获取指定任务的状态和结果")
+    public BaseResponse<ReconstructionTaskDTO> getTaskStatus(@PathVariable String taskId) {
+        log.info("Getting status for task: {}", taskId);
 
-        // 构建响应对象
-        ReconstructionResponse response = new ReconstructionResponse();
-        response.setTaskId(taskId);
-
-        // 检查任务是否存在
-        boolean resultExists = modelFileService.isTaskResultExists(taskId);
-        if (!resultExists) {
-            response.setStatus("processing");
-            return ResultUtils.success(response);
+        // 查询任务
+        ReconstructionTask task = reconstructionTaskService.getTaskByTaskId(taskId);
+        if (task == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "任务不存在");
         }
 
-        // 获取任务状态
-        String status = modelFileService.getTaskStatus(taskId);
-        response.setStatus(status);
+        // 转换为DTO
+        ReconstructionTaskDTO taskDTO = new ReconstructionTaskDTO();
+        BeanUtils.copyProperties(task, taskDTO);
 
-        // 获取已接收的文件URL
-        if (modelFileService.isTaskCompleted(taskId)) {
-            // 如果任务已完成，设置所有文件URL
-            response.setPixelImagesUrl(modelFileService.getFileUrl(taskId, "pixel_images.png"));
-            response.setXyzImagesUrl(modelFileService.getFileUrl(taskId, "xyz_images.png"));
+        return ResultUtils.success(taskDTO);
+    }
 
-            // 获取所有文件
-            Map<String, String> files = modelFileService.getTaskFiles(taskId);
-            for (String fileName : files.keySet()) {
-                if (fileName.endsWith(".obj")) {
-                    response.setObjFileUrl(modelFileService.getFileUrl(taskId, fileName));
-                } else if (fileName.endsWith(".mtl")) {
-                    response.setMtlFileUrl(modelFileService.getFileUrl(taskId, fileName));
-                } else if ((fileName.endsWith(".png") || fileName.endsWith(".jpg") || fileName.endsWith(".jpeg"))
-                        && !fileName.equals("pixel_images.png") && !fileName.equals("xyz_images.png")) {
-                    response.setTextureImageUrl(modelFileService.getFileUrl(taskId, fileName));
-                }
-            }
+    /**
+     * 获取任务列表
+     *
+     * @param status 任务状态筛选（可选）
+     * @param current 当前页码（默认1）
+     * @param pageSize 每页大小（默认10）
+     * @param request HTTP请求
+     * @return 任务列表
+     */
+    @GetMapping("/tasks")
+    @ApiOperation(value = "获取任务列表", notes = "分页获取当前用户的任务列表")
+    @AuthCheck(mustRole = "admin")
+    public BaseResponse<Map<String, Object>> getTasks(
+            @RequestParam(value = "status", required = false) String status,
+            @RequestParam(value = "current", defaultValue = "1") int current,
+            @RequestParam(value = "pageSize", defaultValue = "10") int pageSize,
+            HttpServletRequest request) {
 
-            // 如果没有找到特定文件，使用默认名称
-            if (response.getObjFileUrl() == null) {
-                response.setObjFileUrl(modelFileService.getFileUrl(taskId, "model.obj"));
-            }
-            if (response.getMtlFileUrl() == null) {
-                response.setMtlFileUrl(modelFileService.getFileUrl(taskId, "model.mtl"));
-            }
-            if (response.getTextureImageUrl() == null) {
-                response.setTextureImageUrl(modelFileService.getFileUrl(taskId, "texture.png"));
-            }
-        } else {
-            // 如果任务未完成，只设置已接收的文件URL
-            StorageService storageService = storageServiceFactory.getStorageService();
-            if (storageService.isFileExists(getStoragePath(taskId, "pixel_images.png"))) {
-                response.setPixelImagesUrl(modelFileService.getFileUrl(taskId, "pixel_images.png"));
-            }
-            if (storageService.isFileExists(getStoragePath(taskId, "xyz_images.png"))) {
-                response.setXyzImagesUrl(modelFileService.getFileUrl(taskId, "xyz_images.png"));
-            }
+        // 获取当前登录用户
+        User loginUser = userService.getLoginUser(request);
+        if (loginUser == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR);
         }
 
-        return ResultUtils.success(response);
+        // 查询任务列表
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<ReconstructionTask> taskPage =
+                reconstructionTaskService.listUserTasks(loginUser.getId(), status, current, pageSize);
+
+        // 构建响应
+        Map<String, Object> result = new HashMap<>();
+        result.put("records", taskPage.getRecords());
+        result.put("total", taskPage.getTotal());
+        result.put("size", taskPage.getSize());
+        result.put("current", taskPage.getCurrent());
+        result.put("pages", taskPage.getPages());
+
+        return ResultUtils.success(result);
     }
 
     /**
-     * 获取文件的存储路径
+     * 获取回调URL
      *
-     * @param taskId   任务ID
-     * @param fileName 文件名
-     * @return 存储路径
+     * @param request HTTP请求
+     * @return 回调URL
      */
-    private String getStoragePath(String taskId, String fileName) {
-        return "reconstruction/" + taskId + "/" + fileName;
-    }
+    private String getCallbackUrl(HttpServletRequest request) {
+        String scheme = request.getScheme();
+        String serverName = request.getServerName();
 
-    /**
-     * 同步上传图片进行3D重建
-     * <p>
-     * 接收用户上传的图片，发送到WebSocket服务进行3D重建，并等待结果返回。
-     * 这是一个同步接口，会阻塞直到处理完成或超时。
-     * </p>
-     *
-     * @param file 上传的图片文件
-     * @return 包含任务ID和文件URL的响应对象
-     */
-    @PostMapping("/upload/sync")
-    @ApiOperation(value = "同步上传图片进行3D重建", notes = "上传图片并等待处理完成，直接返回文件URL")
-    public BaseResponse<ReconstructionResponse> uploadImageSync(@RequestParam("file") MultipartFile file) {
-        // 检查文件是否为空
-        ThrowUtils.throwIf(file.isEmpty(), ErrorCode.PARAMS_ERROR, "上传的文件不能为空");
-
-        // 检查文件类型
-        String contentType = file.getContentType();
-        ThrowUtils.throwIf(contentType == null || !contentType.startsWith("image/"),
-                ErrorCode.PARAMS_ERROR, "只支持上传图片文件");
-
-        try {
-            // 生成任务ID
-            String taskId = UUID.randomUUID().toString().replace("-", "");
-
-            // 获取图片数据
-            byte[] imageData = file.getBytes();
-
-
-            // 创建结果部分回调
-            final ReconstructionResponse[] responseHolder = new ReconstructionResponse[1];
-
-            ResultPartCallback callback = new ResultPartCallback() {
-                @Override
-                public void onResultPart(String name, String contentType, byte[] data) {
-                    try {
-                        // 处理结果部分
-                        ReconstructionResponse response = modelFileService.processResultPart(taskId, name, contentType, data);
-                        responseHolder[0] = response;
-                        log.info("Task {} received result part: {}, size: {} bytes", taskId, name, data.length);
-                    } catch (IOException e) {
-                        log.error("Failed to process result part {} for task {}", name, taskId, e);
-                    }
-                }
-
-                @Override
-                public void onStatusUpdate(String status, String error) {
-                    log.info("Task {} status update: {}, error: {}", taskId, status, error);
-                }
-            };
-
-            // 发送图片数据到WebSocket服务并渐进式处理结果
-            String finalStatus = webSocketService.sendImageAndProcessResult(imageData, taskId, callback)
-                    .get(2, TimeUnit.MINUTES); // 设置2分钟超时
-
-            log.info("Task {} completed synchronously with status: {}", taskId, finalStatus);
-
-            // 获取最终响应
-            ReconstructionResponse response = responseHolder[0];
-            if (response == null) {
-                response = new ReconstructionResponse();
-                response.setTaskId(taskId);
-                response.setStatus(finalStatus);
-            }
-
-            // 设置任务ID和状态
-            response.setTaskId(taskId);
-            if ("completed".equals(finalStatus)) {
-                response.setStatus("success");
-            } else if ("failed".equals(finalStatus)) {
-                response.setStatus("failed");
-            } else {
-                response.setStatus(finalStatus);
-            }
-
-            return ResultUtils.success(response);
-        } catch (IOException e) {
-            log.error("Failed to process image", e);
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "图片处理失败：" + e.getMessage());
-        } catch (InterruptedException e) {
-            log.error("Processing was interrupted", e);
-            Thread.currentThread().interrupt();
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "处理被中断");
-        } catch (ExecutionException e) {
-            log.error("Processing failed", e);
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "处理失败：" + e.getCause().getMessage());
-        } catch (TimeoutException e) {
-            log.error("Processing timed out", e);
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "处理超时");
-        }
-    }
-
-    /**
-     * 检查WebSocket连接状态
-     * <p>
-     * 检查与WebSocket服务器的连接状态。
-     * </p>
-     *
-     * @return 包含连接状态的响应对象
-     */
-    @GetMapping("/connection/status")
-    @ApiOperation(value = "检查WebSocket连接状态", notes = "检查与WebSocket服务器的连接状态")
-    public BaseResponse<Boolean> checkConnectionStatus() {
-        boolean connected = webSocketService.isConnected();
-        return ResultUtils.success(connected);
-    }
-
-    /**
-     * 初始化WebSocket连接
-     * <p>
-     * 主动建立与WebSocket服务器的连接。
-     * </p>
-     *
-     * @return 包含连接结果的响应对象
-     */
-    @PostMapping("/connection/init")
-    @ApiOperation(value = "初始化WebSocket连接", notes = "主动建立与WebSocket服务器的连接")
-    public BaseResponse<Boolean> initConnection() {
-        boolean success = webSocketService.initConnection();
-        return ResultUtils.success(success);
-    }
-
-    /**
-     * 重置WebSocket连接
-     * <p>
-     * 手动重置WebSocket连接状态，关闭现有连接并在下次请求时重新连接。
-     * </p>
-     *
-     * @return 包含重置结果的响应对象
-     */
-    @PostMapping("/connection/reset")
-    @ApiOperation(value = "重置WebSocket连接", notes = "手动重置WebSocket连接状态")
-    @AuthCheck(mustRole = "admin") // 仅管理员可访问
-    public BaseResponse<Boolean> resetConnection() {
-        webSocketService.resetConnection();
-        return ResultUtils.success(true);
+        // 构建回调URL
+        return scheme + "://" + serverName + ":" + serverPort + contextPath + "/api/reconstruction/callback";
     }
 
     /**
@@ -375,14 +317,28 @@ public class ReconstructionController {
         ThrowUtils.throwIf(taskId == null || taskId.isEmpty(), ErrorCode.PARAMS_ERROR, "任务ID不能为空");
         ThrowUtils.throwIf(fileName == null || fileName.isEmpty(), ErrorCode.PARAMS_ERROR, "文件名不能为空");
 
-        // 检查任务结果是否存在
-        if (!modelFileService.isTaskResultExists(taskId)) {
+        // 检查任务是否存在
+        ReconstructionTask task = reconstructionTaskService.getTaskByTaskId(taskId);
+        if (task == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "任务不存在");
+        }
+
+        // 检查任务是否完成
+        if (!"COMPLETED".equals(task.getStatus())) {
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "任务结果不存在或尚未完成");
         }
 
         try {
-            // 直接使用文件服务获取文件数据
-            byte[] fileData = modelFileService.getFileData(taskId, fileName);
+            // 根据文件名构建存储路径
+            String filePath = "reconstruction/" + taskId + "/" + fileName;
+
+            // 检查文件是否存在
+            if (!fileStorageService.isFileExists(filePath)) {
+                throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "文件不存在");
+            }
+
+            // 获取文件数据
+            byte[] fileData = fileStorageService.getFileData(filePath);
 
             // 设置响应头
             HttpHeaders headers = new HttpHeaders();

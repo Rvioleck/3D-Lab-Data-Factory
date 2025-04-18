@@ -54,28 +54,35 @@ deepseek:
     # 最大令牌数
     max-tokens: 2048
 
-# WebSocket客户端配置
-websocket:
-  server:
-    # WebSocket服务器URL
-    url: ws://10.0.0.2:8001/generate3d
-  connection:
-    # 连接超时时间（秒）
-    timeout: 30
-
 # 文件上传配置已移至spring配置下
 
 # 存储服务配置
 storage:
-  # 存储类型：local（本地存储）或oss（阿里云OSS）
-  type: local
-  # 本地存储配置
-  local:
-    # 存储根路径
-    root-path: ./storage
+  # 使用腾讯云COS存储
+  type: cos
 
-# 3D重建结果存储配置（兼容旧版配置）
+# 3D重建结果存储配置（使用COS存储）
 reconstruction:
+  # HTTP重建服务配置
+  http:
+    server:
+      # Python服务器URL
+      url: http://10.0.0.2:8001/generate3d
+      # 健康检查URL
+      health.url: http://10.0.0.2:8001/health
+    connection:
+      # 连接超时时间（秒）
+      timeout: 30
+      # 读取超时时间（秒）
+      read.timeout: 300
+      # 写入超时时间（秒）
+      write.timeout: 30
   storage:
-    # 本地存储路径
-    local-path: ./construction_results
+
+cos:
+  client:
+    host: https://3d-lab-1258032620.cos.ap-shanghai.myqcloud.com
+    secretId: ${TC_SECRETID}
+    secretKey: ${TC_SECRETKEY}
+    region: ap-shanghai
+    bucket: 3d-lab-1258032620

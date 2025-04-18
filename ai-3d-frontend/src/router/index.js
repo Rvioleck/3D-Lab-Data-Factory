@@ -25,27 +25,27 @@ const routes = [
     meta: { requiresAuth: false }
   },
   {
-    path: '/chat',
-    name: 'Chat',
-    component: () => import('../views/ChatView.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true }
+    path: '/images',
+    name: 'ImageLibrary',
+    component: () => import('../views/ImageLibraryView.vue'),
+    meta: { requiresAuth: true }
   },
   {
-    path: '/health',
-    name: 'Health',
-    component: () => import('../views/HealthView.vue'),
-    meta: { requiresAuth: false }
+    path: '/images/:id',
+    name: 'ImageDetail',
+    component: () => import('../views/ImageDetailView.vue'),
+    meta: { requiresAuth: true }
   },
   {
-    path: '/admin/users',
-    name: 'UserManagement',
-    component: () => import('../views/admin/UserManagementView.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true }
+    path: '/models',
+    name: 'ModelLibrary',
+    component: () => import('../views/ModelLibraryView.vue'),
+    meta: { requiresAuth: true }
   },
   {
-    path: '/profile',
-    name: 'Profile',
-    component: () => import('../views/ProfileView.vue'),
+    path: '/models/:id',
+    name: 'ModelDetail',
+    component: () => import('../views/ModelDetailView.vue'),
     meta: { requiresAuth: true }
   },
   {
@@ -53,6 +53,47 @@ const routes = [
     name: 'Reconstruction',
     component: () => import('../views/ReconstructionView.vue'),
     meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    path: '/reconstruction/:imageId',
+    name: 'ReconstructionWithImage',
+    component: () => import('../views/ReconstructionView.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    path: '/resources',
+    name: 'Resources',
+    redirect: '/images',
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/health',
+    name: 'Health',
+    component: () => import('../views/HealthView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/profile',
+    name: 'Profile',
+    redirect: '/home',
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/admin/users',
+    name: 'UserManagement',
+    redirect: '/home',
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    path: '/chat',
+    name: 'Chat',
+    component: () => import('../views/ChatView.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    // 捕获所有未匹配的路由，重定向到首页
+    path: '/:pathMatch(.*)*',
+    redirect: '/home'
   }
 ]
 

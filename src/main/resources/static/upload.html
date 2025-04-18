@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片上传测试</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .preview-container {
+            max-width: 100%;
+            margin-top: 20px;
+        }
+        .preview-image {
+            max-width: 100%;
+            max-height: 300px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 5px;
+        }
+        .result-container {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="mb-0">图片上传到腾讯云COS测试</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="uploadForm" enctype="multipart/form-data">
+                            <div class="mb-3">
+                                <label for="imageFile" class="form-label">选择图片文件</label>
+                                <input class="form-control" type="file" id="imageFile" name="file" accept="image/*">
+                                <div class="form-text">支持的格式：JPG, PNG, JPEG等常见图片格式，最大10MB</div>
+                            </div>
+                            
+                            <div class="preview-container hidden" id="previewContainer">
+                                <h5>图片预览：</h5>
+                                <img id="previewImage" class="preview-image" src="" alt="预览图片">
+                            </div>
+                            
+                            <div class="d-grid gap-2 mt-3">
+                                <button type="submit" class="btn btn-primary" id="uploadBtn">上传到腾讯云COS</button>
+                            </div>
+                        </form>
+                        
+                        <div class="result-container hidden" id="resultContainer">
+                            <h5>上传结果：</h5>
+                            <div id="resultContent"></div>
+                            <div class="mt-3">
+                                <a href="#" id="fileUrl" target="_blank" class="btn btn-sm btn-success">查看上传的文件</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const uploadForm = document.getElementById('uploadForm');
+            const imageFile = document.getElementById('imageFile');
+            const uploadBtn = document.getElementById('uploadBtn');
+            const previewContainer = document.getElementById('previewContainer');
+            const previewImage = document.getElementById('previewImage');
+            const resultContainer = document.getElementById('resultContainer');
+            const resultContent = document.getElementById('resultContent');
+            const fileUrl = document.getElementById('fileUrl');
+            
+            // 图片预览
+            imageFile.addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    const reader = new FileReader();
+                    
+                    reader.onload = function(e) {
+                        previewImage.src = e.target.result;
+                        previewContainer.classList.remove('hidden');
+                    };
+                    
+                    reader.readAsDataURL(this.files[0]);
+                }
+            });
+            
+            // 表单提交
+            uploadForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // 检查是否选择了文件
+                if (!imageFile.files || imageFile.files.length === 0) {
+                    alert('请选择一个图片文件');
+                    return;
+                }
+                
+                // 检查文件类型
+                const file = imageFile.files[0];
+                if (!file.type.startsWith('image/')) {
+                    alert('请选择有效的图片文件');
+                    return;
+                }
+                
+                // 检查文件大小
+                if (file.size > 10 * 1024 * 1024) {
+                    alert('文件大小不能超过10MB');
+                    return;
+                }
+                
+                // 禁用上传按钮
+                uploadBtn.disabled = true;
+                uploadBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 上传中...';
+                
+                // 准备表单数据
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                // 发送请求
+                fetch('/api/file/upload/image', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // 显示结果
+                    if (data.code === 0) {
+                        resultContent.innerHTML = `
+                            <div class="alert alert-success">
+                                <p><strong>上传成功！</strong></p>
+                                <p>文件名: ${data.data.name}</p>
+                                <p>文件路径: ${data.data.path}</p>
+                                <p>文件URL: <a href="${data.data.url}" target="_blank">${data.data.url}</a></p>
+                            </div>
+                        `;
+                        fileUrl.href = data.data.url;
+                        resultContainer.classList.remove('hidden');
+                    } else {
+                        resultContent.innerHTML = `
+                            <div class="alert alert-danger">
+                                <p><strong>上传失败！</strong></p>
+                                <p>错误信息: ${data.message || '未知错误'}</p>
+                            </div>
+                        `;
+                        resultContainer.classList.remove('hidden');
+                    }
+                })
+                .catch(error => {
+                    resultContent.innerHTML = `
+                        <div class="alert alert-danger">
+                            <p><strong>上传失败！</strong></p>
+                            <p>错误信息: ${error.message || '网络错误'}</p>
+                        </div>
+                    `;
+                    resultContainer.classList.remove('hidden');
+                })
+                .finally(() => {
+                    // 恢复上传按钮
+                    uploadBtn.disabled = false;
+                    uploadBtn.innerHTML = '上传到腾讯云COS';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

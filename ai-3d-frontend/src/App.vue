@@ -16,19 +16,19 @@
                 <i class="bi bi-house me-1"></i> 首页
               </router-link>
             </li>
-            <li class="nav-item" v-if="isAdmin">
-              <router-link class="nav-link" to="/chat">
-                <i class="bi bi-chat me-1"></i> 聊天
+            <li class="nav-item">
+              <router-link class="nav-link" to="/images">
+                <i class="bi bi-image me-1"></i> 图片库
+              </router-link>
+            </li>
+            <li class="nav-item">
+              <router-link class="nav-link" to="/models">
+                <i class="bi bi-box me-1"></i> 3D模型库
               </router-link>
             </li>
             <li class="nav-item" v-if="isAdmin">
               <router-link class="nav-link" to="/reconstruction">
-                <i class="bi bi-box me-1"></i> 3D重建
-              </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link class="nav-link" to="/health">
-                <i class="bi bi-heart-pulse me-1"></i> 健康检查
+                <i class="bi bi-tools me-1"></i> 3D重建
               </router-link>
             </li>
           </ul>
@@ -55,13 +55,18 @@
               </a>
               <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                 <li>
-                  <router-link class="dropdown-item" to="/profile">
-                    <i class="bi bi-person me-2"></i>个人资料
+                  <router-link class="dropdown-item" to="/home">
+                    <i class="bi bi-person me-2"></i>个人主页
                   </router-link>
                 </li>
                 <li v-if="isAdmin">
-                  <router-link class="dropdown-item" to="/admin/users">
-                    <i class="bi bi-people me-2"></i>用户管理
+                  <router-link class="dropdown-item" to="/reconstruction">
+                    <i class="bi bi-tools me-2"></i>3D重建
+                  </router-link>
+                </li>
+                <li v-if="isAdmin">
+                  <router-link class="dropdown-item" to="/chat">
+                    <i class="bi bi-chat-dots me-2"></i>AI聊天
                   </router-link>
                 </li>
                 <li><hr class="dropdown-divider"></li>
@@ -126,10 +131,10 @@ export default {
           const userData = await store.dispatch('user/fetchCurrentUser')
           console.log('获取用户信息成功:', userData)
 
-          // 如果当前在登录页面但已经登录，跳转到聊天页面
+          // 如果当前在登录页面但已经登录，跳转到首页
           if (router.currentRoute.value.path === '/login' && store.getters['user/isLoggedIn']) {
-            console.log('已登录状态，从登录页跳转到聊天页面')
-            router.replace('/chat')
+            console.log('已登录状态，从登录页跳转到首页')
+            router.replace('/home')
           }
         } catch (error) {
           console.error('获取用户信息失败:', error)

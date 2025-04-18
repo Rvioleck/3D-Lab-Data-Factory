@@ -1,8 +1,12 @@
 # AI 3D Platform API 文档
 
+## 产品简介
+
+本产品是一个基于Spring Boot的AI 3D后端项目，提供用户管理、聊天会话管理、AI对话功能和3D重建功能，支持流式响应和权限控制。
+
 ## 基础信息
 
-- 基础路径: `/api`
+- 基础路径: `/`（注意：3D重建相关接口以`/api`开头）
 - 服务端口: 8123
 - 所有接口返回格式统一为：
 ```json
@@ -133,8 +137,15 @@
 ### 1.6 根据ID获取用户基本信息（仅管理员可访问）
 - 请求路径: `/user/get`
 - 请求方法: POST
-- 权限要求: 需要管理员权限
-- 请求体: 用户ID（数字）
+- 权限要求: 需要管理员权限（通过`@AuthCheck(mustRole = UserConstant.ADMIN_ROLE)`注解实现）
+- 请求体:
+```json
+{
+    "id": "1234567890123456789"  // 用户ID（字符串类型的雪花ID）
+}
+```
+
+> 注意：请求体使用`GetRequest`对象，必须包含`id`字段。
 - 响应数据:
 ```json
 {
@@ -156,8 +167,15 @@
 ### 1.7 根据ID获取用户详细信息（仅管理员可访问）
 - 请求路径: `/user/detail`
 - 请求方法: POST
-- 权限要求: 需要管理员权限
-- 请求体: 用户ID（数字）
+- 权限要求: 需要管理员权限（通过`@AuthCheck(mustRole = UserConstant.ADMIN_ROLE)`注解实现）
+- 请求体:
+```json
+{
+    "id": "1234567890123456789"  // 用户ID（字符串类型的雪花ID）
+}
+```
+
+> 注意：请求体使用`GetRequest`对象，必须包含`id`字段。
 - 响应数据:
 ```json
 {
@@ -182,7 +200,7 @@
 ### 1.8 获取所有用户信息（仅管理员可访问）
 - 请求路径: `/user/list`
 - 请求方法: POST
-- 权限要求: 需要管理员权限
+- 权限要求: 需要管理员权限（通过`@AuthCheck(mustRole = UserConstant.ADMIN_ROLE)`注解实现）
 - 响应数据:
 ```json
 {
@@ -361,7 +379,7 @@ data: [DONE]
   - 删除指定的消息
   - 可以删除任意类型的消息（用户消息或AI回复）
   - 删除后的消息不会出现在历史记录中
-  - 重构后的删除逻辑只删除单条消息，不会影响其他消息
+  - 删除操作会验证当前用户是否有权限删除该消息（即消息是否属于该用户）
 
 ## 3. 健康检查接口
 
@@ -447,125 +465,144 @@ data: [DONE]
    - 建议客户端实现重连机制
    - 建议在弱网环境下降级使用普通接口
 
-## 5. 3D重建接口
+## 5. 图片资源接口
 
-### 5.1 上传图片进行3D重建（渐进式异步模式）
-- 请求路径: `/reconstruction/upload`
+### 5.1 上传图片（需要用户权限）
+- 请求路径: `/picture/upload`
 - 请求方法: POST
+- 权限要求: 需要用户权限（通过`@AuthCheck(mustRole = UserConstant.USER_ROLE)`注解实现）
 - Content-Type: `multipart/form-data`
 - 请求参数:
   - file: 图片文件（必需）
+  - name: 图片名称（可选）
+  - category: 图片分类（可选）
+  - tags: 图片标签，逗号分隔（可选）
+  - introduction: 图片简介（可选）
 - 响应数据:
 ```json
 {
     "code": 0,
     "data": {
-        "taskId": "a1b2c3d4e5f6g7h8i9j0",
-        "status": "processing"
+        "id": "1234567890123456789",
+        "url": "https://example.com/images/uuid/image.jpg",
+        "name": "示例图片",
+        "introduction": "这是一张示例图片",
+        "category": "家具",
+        "tags": "桌子,椅子",
+        "picSize": 1024000,
+        "picWidth": 1920,
+        "picHeight": 1080,
+        "picScale": 1.78,
+        "picFormat": "jpg",
+        "userId": "1234567890123456789",
+        "createTime": "2023-01-01 12:00:00",
+        "hasModel": false
     },
     "message": "ok"
 }
 ```
 - 说明：
-  - 该接口会异步处理图片，返回任务ID
-  - 采用渐进式处理方式，可以在处理过程中获取部分结果
-  - 需要通过状态检查接口查询处理进度和获取已完成的部分
+  - 需要用户权限才能访问此接口
+  - 该接口负责上传图片并保存图片信息
+  - 返回完整的图片信息，包括ID、URL、尺寸等
+  - 文件大小限制为10MB
+  - 仅支持图片类型文件（Content-Type以`image/`开头）
+  - hasModel字段表示该图片是否已关联3D模型
 
-### 5.2 同步上传图片进行3D重建（渐进式同步模式）
-- 请求路径: `/reconstruction/upload/sync`
-- 请求方法: POST
-- Content-Type: `multipart/form-data`
-- 请求参数:
-  - file: 图片文件（必需）
+### 5.2 获取图片详情
+- 请求路径: `/picture/{id}`
+- 请求方法: GET
+- 路径参数:
+  - id: 图片ID
 - 响应数据:
 ```json
 {
     "code": 0,
     "data": {
-        "taskId": "a1b2c3d4e5f6g7h8i9j0",
-        "status": "success",
-        "pixelImagesUrl": "/api/reconstruction/files/a1b2c3d4e5f6g7h8i9j0/pixel_images.png",
-        "xyzImagesUrl": "/api/reconstruction/files/a1b2c3d4e5f6g7h8i9j0/xyz_images.png",
-        "objFileUrl": "/api/reconstruction/files/a1b2c3d4e5f6g7h8i9j0/model.obj",
-        "mtlFileUrl": "/api/reconstruction/files/a1b2c3d4e5f6g7h8i9j0/model.mtl",
-        "textureImageUrl": "/api/reconstruction/files/a1b2c3d4e5f6g7h8i9j0/texture.png"
+        "id": "1234567890123456789",
+        "url": "https://example.com/images/uuid/image.jpg",
+        "name": "示例图片",
+        "introduction": "这是一张示例图片",
+        "category": "家具",
+        "tags": "桌子,椅子",
+        "picSize": 1024000,
+        "picWidth": 1920,
+        "picHeight": 1080,
+        "picScale": 1.78,
+        "picFormat": "jpg",
+        "userId": "1234567890123456789",
+        "createTime": "2023-01-01 12:00:00",
+        "hasModel": false
     },
     "message": "ok"
 }
 ```
-- 说明：
-  - 该接口会同步处理图片，等待处理完成后返回结果
-  - 采用渐进式处理方式，但会等待所有结果都完成后才返回
-  - 处理时间可能较长，请考虑设置足够的超时时间（建议2分钟以上）
 
-### 5.3 获取任务状态
-- 请求路径: `/reconstruction/status/{taskId}`
-- 请求方法: GET
-- 路径参数:
-  - taskId: 任务ID
-- 响应数据（处理中）:
+### 5.3 分页获取图片列表
+- 请求路径: `/picture/list/page`
+- 请求方法: POST
+- 请求体:
+```json
+{
+    "current": 1,
+    "pageSize": 10,
+    "name": "示例",
+    "category": "家具",
+    "tags": "桌子",
+    "userId": "1234567890123456789"
+}
+```
+- 响应数据:
 ```json
 {
     "code": 0,
     "data": {
-        "taskId": "a1b2c3d4e5f6g7h8i9j0",
-        "status": "processing",
-        "pixelImagesUrl": "/api/reconstruction/files/a1b2c3d4e5f6g7h8i9j0/pixel_images.png",
-        "xyzImagesUrl": "/api/reconstruction/files/a1b2c3d4e5f6g7h8i9j0/xyz_images.png"
+        "records": [
+            {
+                "id": "1234567890123456789",
+                "url": "https://example.com/images/uuid/image.jpg",
+                "name": "示例图片",
+                "introduction": "这是一张示例图片",
+                "category": "家具",
+                "tags": "桌子,椅子",
+                "picSize": 1024000,
+                "picWidth": 1920,
+                "picHeight": 1080,
+                "picScale": 1.78,
+                "picFormat": "jpg",
+                "userId": "1234567890123456789",
+                "createTime": "2023-01-01 12:00:00",
+                "hasModel": false
+            }
+        ],
+        "total": 100,
+        "size": 10,
+        "current": 1,
+        "pages": 10
     },
     "message": "ok"
 }
 ```
+- 说明：
+  - 所有查询参数都是可选的
+  - name参数支持模糊查询
+  - tags参数支持模糊查询
+  - 返回的hasModel字段表示该图片是否已关联3D模型
 
-响应数据（完成）:
+### 5.4 更新图片信息（需要用户权限）
+- 请求路径: `/picture/update`
+- 请求方法: POST
+- 权限要求: 需要用户权限（通过`@AuthCheck(mustRole = UserConstant.USER_ROLE)`注解实现）
+- 请求体:
 ```json
 {
-    "code": 0,
-    "data": {
-        "taskId": "a1b2c3d4e5f6g7h8i9j0",
-        "status": "success",
-        "pixelImagesUrl": "/api/reconstruction/files/a1b2c3d4e5f6g7h8i9j0/pixel_images.png",
-        "xyzImagesUrl": "/api/reconstruction/files/a1b2c3d4e5f6g7h8i9j0/xyz_images.png",
-        "objFileUrl": "/api/reconstruction/files/a1b2c3d4e5f6g7h8i9j0/model.obj",
-        "mtlFileUrl": "/api/reconstruction/files/a1b2c3d4e5f6g7h8i9j0/model.mtl",
-        "textureImageUrl": "/api/reconstruction/files/a1b2c3d4e5f6g7h8i9j0/texture.png"
-    },
-    "message": "ok"
+    "id": "1234567890123456789",
+    "name": "更新后的名称",
+    "introduction": "更新后的简介",
+    "category": "更新后的分类",
+    "tags": "更新,标签"
 }
 ```
-- 说明：
-  - status可能的值："processing"（处理中）、"success"（成功）、"failed"（失败）
-  - 当任务处于"processing"状态时，可能会返回已完成的部分结果的URL
-  - 当任务完成（status为"success"）时，会返回所有结果文件的URL
-
-### 5.4 获取重建结果文件
-- 请求路径: `/reconstruction/files/{taskId}/{fileName}`
-- 请求方法: GET
-- 路径参数:
-  - taskId: 任务ID
-  - fileName: 文件名（如 model.obj, model.mtl, pixel_images.png 等）
-- 响应类型: 根据文件类型自动设置
-- 响应数据: 二进制文件数据
-- 说明：
-  - 返回指定的单个文件，而不是整个ZIP包
-  - 常见文件包括：model.obj（3D模型）、model.mtl（材质）、pixel_images.png（纹理图像）
-  - 如果任务尚未完成或文件不存在，将返回404错误
-
-### 5.5 获取文件内容（用于图片预览）
-- 请求路径: `/reconstruction/preview`
-- 请求方法: GET
-- 请求参数:
-  - path: 文件的绝对路径
-- 响应类型: 根据文件类型自动设置
-- 响应数据: 二进制文件数据
-- 说明：
-  - 主要用于图片预览
-  - 返回文件的实际内容，而不是下载链接
-  - 如果文件不存在，将返回404错误
-
-### 5.6 检查WebSocket连接状态
-- 请求路径: `/reconstruction/connection/status`
-- 请求方法: GET
 - 响应数据:
 ```json
 {
@@ -575,11 +612,305 @@ data: [DONE]
 }
 ```
 - 说明：
-  - 返回true表示与WebSocket服务器连接正常
-  - 返回false表示未连接或连接已断开
-  - 系统使用OkHttp WebSocket客户端，实现了自动重连和心跳检测机制
+  - 只能更新图片的基本信息，不能更新图片文件本身
+  - 只有图片的创建者或管理员可以更新图片信息
 
-## 6. 前端测试页面
+### 5.5 删除图片（需要用户权限）
+- 请求路径: `/picture/delete`
+- 请求方法: POST
+- 权限要求: 需要用户权限（通过`@AuthCheck(mustRole = UserConstant.USER_ROLE)`注解实现）
+- 请求体:
+```json
+{
+    "id": "1234567890123456789"
+}
+```
+- 响应数据:
+```json
+{
+    "code": 0,
+    "data": true,
+    "message": "ok"
+}
+```
+- 说明：
+  - 需要用户权限才能访问此接口
+  - 只有图片的创建者或管理员可以删除图片
+  - 如果图片已关联3D模型，则无法删除
+
+### 5.6 获取图片分类列表
+- 请求路径: `/picture/categories`
+- 请求方法: GET
+- 响应数据:
+```json
+{
+    "code": 0,
+    "data": ["家具", "玩具", "装饰品", "其他"],
+    "message": "ok"
+}
+```
+
+### 5.7 获取图片标签列表
+- 请求路径: `/picture/tags`
+- 请求方法: GET
+- 响应数据:
+```json
+{
+    "code": 0,
+    "data": ["桌子", "椅子", "沙发", "床"],
+    "message": "ok"
+}
+```
+
+### 5.8 批量获取图片信息
+- 请求路径: `/picture/batch`
+- 请求方法: POST
+- 请求体:
+```json
+["1234567890123456789", "9876543210987654321"]
+```
+- 响应数据:
+```json
+{
+    "code": 0,
+    "data": [
+        {
+            "id": "1234567890123456789",
+            "url": "https://example.com/images/uuid/image1.jpg",
+            "name": "示例图片1",
+            "introduction": "这是一张示例图片",
+            "category": "家具",
+            "tags": "桌子,椅子",
+            "picSize": 1024000,
+            "picWidth": 1920,
+            "picHeight": 1080,
+            "picScale": 1.78,
+            "picFormat": "jpg",
+            "userId": "1234567890123456789",
+            "createTime": "2023-01-01 12:00:00",
+            "hasModel": false
+        },
+        {
+            "id": "9876543210987654321",
+            "url": "https://example.com/images/uuid/image2.jpg",
+            "name": "示例图片2",
+            "introduction": "这是另一张示例图片",
+            "category": "玩具",
+            "tags": "积木,玩偶",
+            "picSize": 2048000,
+            "picWidth": 1280,
+            "picHeight": 720,
+            "picScale": 1.78,
+            "picFormat": "png",
+            "userId": "1234567890123456789",
+            "createTime": "2023-01-02 12:00:00",
+            "hasModel": true
+        }
+    ],
+    "message": "ok"
+}
+```
+
+### 5.9 上传图片（已弃用）
+- 请求路径: `/file/upload/image`
+- 请求方法: POST
+- Content-Type: `multipart/form-data`
+- 请求参数:
+  - file: 图片文件（必需）
+- 响应数据:
+```json
+{
+    "code": 0,
+    "data": "https://example.com/images/uuid/image.jpg",
+    "message": "ok"
+}
+```
+- 说明：
+  - **此接口已弃用，请使用 `/picture/upload` 接口代替**
+  - 该接口仅负责上传图片并存储到COS，不会创建重建任务
+  - 返回图片的URL
+  - 文件大小限制为10MB
+  - 仅支持图片类型文件（Content-Type以`image/`开头）
+
+## 6. 3D重建接口
+
+### 6.1 创建3D重建任务（从图片URL）
+- 请求路径: `/api/reconstruction/create`
+- 请求方法: POST
+- 请求参数:
+  - imageUrl: 图片URL或路径（必需）
+  - name: 模型名称（可选）
+  - category: 模型分类（可选）
+- 响应数据:
+```json
+{
+    "code": 0,
+    "data": {
+        "taskId": "1234567890abcdef1234567890abcdef",
+        "sseUrl": "/api/reconstruction/events/1234567890abcdef1234567890abcdef"
+    },
+    "message": "ok"
+}
+```
+- 说明：
+  - 该接口使用已上传的图片创建3D重建任务
+  - imageUrl可以是从`/picture/upload`接口返回的URL
+  - 返回任务ID和SSE事件流URL
+  - 客户端可以通过SSE事件流实时获取处理进度和结果
+  - 需要管理员权限才能访问此接口（通过`@AuthCheck(mustRole = "admin")`注解实现）
+
+### 6.1.1 创建3D重建任务（从图片ID）
+- 请求路径: `/api/reconstruction/create-from-image`
+- 请求方法: POST
+- 请求体:
+```json
+{
+    "imageId": "1234567890123456789",
+    "name": "模型名称",
+    "category": "模型分类"
+}
+```
+- 响应数据:
+```json
+{
+    "code": 0,
+    "data": {
+        "taskId": "1234567890abcdef1234567890abcdef",
+        "sseUrl": "/api/reconstruction/events/1234567890abcdef1234567890abcdef"
+    },
+    "message": "ok"
+}
+```
+- 说明：
+  - 该接口使用图片ID创建3D重建任务
+  - imageId必须是已存在的图片ID
+  - name和category参数是可选的
+  - 返回任务ID和SSE事件流URL
+  - 需要管理员权限才能访问此接口
+
+### 6.2 SSE事件流
+- 请求路径: `/api/reconstruction/events/{taskId}`
+- 请求方法: GET
+- 路径参数:
+  - taskId: 任务ID
+- 响应类型: `text/event-stream`
+- 响应数据: Server-Sent Events流，包含以下事件类型：
+  - `connect`: 连接建立成功
+  ```
+  event: connect
+  id: 1
+  data: Connected successfully
+  ```
+  - `status`: 任务状态更新
+  ```
+  event: status
+  id: 2
+  data: {"taskId":"1234567890abcdef1234567890abcdef","status":"PROCESSING"}
+  ```
+  - `result`: 结果文件可用
+  ```
+  event: result
+  id: 3
+  data: {"taskId":"1234567890abcdef1234567890abcdef","name":"pixel_images.png","url":"https://example.com/reconstruction/1234567890abcdef1234567890abcdef/pixel_images.png"}
+  ```
+- 说明：
+  - 客户端需要使用EventSource API或其他SSE客户端库来处理事件流
+  - 当任务完成或失败时，服务器会自动关闭连接
+  - 客户端可以根据status事件中的状态来判断任务是否完成
+  - 如果任务已经有状态或结果文件，连接建立后会立即发送相应事件
+
+### 6.3 获取任务状态
+- 请求路径: `/api/reconstruction/status/{taskId}`
+- 请求方法: GET
+- 路径参数:
+  - taskId: 任务ID
+- 权限要求: 无特殊权限要求，但需要登录
+- 响应数据:
+```json
+{
+    "code": 0,
+    "data": {
+        "taskId": "1234567890abcdef1234567890abcdef",
+        "status": "COMPLETED",
+        "sourceImageId": "123456789",
+        "originalImageUrl": "https://example.com/images/image.jpg",
+        "pixelImagesUrl": "https://example.com/reconstruction/1234567890abcdef1234567890abcdef/pixel_images.png",
+        "xyzImagesUrl": "https://example.com/reconstruction/1234567890abcdef1234567890abcdef/xyz_images.png",
+        "outputZipUrl": "https://example.com/reconstruction/1234567890abcdef1234567890abcdef/output3d.zip",
+        "resultModelId": "987654321",
+        "errorMessage": null,
+        "processingTime": 120,
+        "createTime": "2023-01-01T00:00:00Z",
+        "updateTime": "2023-01-01T00:02:00Z"
+    },
+    "message": "ok"
+}
+```
+- 说明：
+  - status可能的值："PENDING"（等待处理）、"PROCESSING"（处理中）、"COMPLETED"（完成）、"FAILED"（失败）
+  - 当任务完成（status为"COMPLETED"）时，会返回所有结果文件的URL
+  - 当任务失败（status为"FAILED"）时，errorMessage字段会包含错误信息
+
+### 6.4 获取任务列表
+- 请求路径: `/api/reconstruction/tasks`
+- 请求方法: GET
+- 权限要求: 需要管理员权限（通过`@AuthCheck(mustRole = "admin")`注解实现）
+- 请求参数:
+  - status: 任务状态筛选（可选）
+  - current: 当前页码（默认1）
+  - pageSize: 每页大小（默认10）
+- 响应数据:
+```json
+{
+    "code": 0,
+    "data": {
+        "records": [
+            {
+                "id": "123456789",
+                "taskId": "1234567890abcdef1234567890abcdef",
+                "status": "COMPLETED",
+                "sourceImageId": "123456789",
+                "originalImageUrl": "https://example.com/images/image.jpg",
+                "pixelImagesUrl": "https://example.com/reconstruction/1234567890abcdef1234567890abcdef/pixel_images.png",
+                "xyzImagesUrl": "https://example.com/reconstruction/1234567890abcdef1234567890abcdef/xyz_images.png",
+                "outputZipUrl": "https://example.com/reconstruction/1234567890abcdef1234567890abcdef/output3d.zip",
+                "resultModelId": "987654321",
+                "errorMessage": null,
+                "processingTime": 120,
+                "userId": "123456789",
+                "createTime": "2023-01-01T00:00:00Z",
+                "updateTime": "2023-01-01T00:02:00Z"
+            }
+        ],
+        "total": 100,
+        "size": 10,
+        "current": 1,
+        "pages": 10
+    },
+    "message": "ok"
+}
+```
+- 说明：
+  - 需要管理员权限才能访问此接口
+  - 返回当前登录用户创建的任务列表
+  - 可以通过status参数筛选特定状态的任务
+
+### 6.5 获取重建结果文件
+- 请求路径: `/api/reconstruction/files/{taskId}/{fileName}`
+- 请求方法: GET
+- 路径参数:
+  - taskId: 任务ID
+  - fileName: 文件名（如 model.obj, model.mtl, pixel_images.png 等）
+- 响应类型: 根据文件类型自动设置
+- 响应数据: 二进制文件数据
+- 说明：
+  - 返回指定的单个文件
+  - 常见文件包括：model.obj（3D模型）、model.mtl（材质）、pixel_images.png（纹理图像）、xyz_images.png（深度图）、output3d.zip（完整输出包）
+  - 如果任务尚未完成或文件不存在，将返回404错误
+  - 响应头中包含适当的Content-Type和Content-Disposition
+  - 文件从存储服务（如腾讯COS）中获取，路径格式为"reconstruction/{taskId}/{fileName}"
+
+## 7. 前端测试页面
 
 系统提供了一个简单的前端测试页面，可以用于测试3D重建功能：
 
@@ -589,9 +920,17 @@ data: [DONE]
   - 支持同步和异步模式
   - 检查任务状态
   - 下载重建结果
-  - 检查WebSocket连接状态
+  - 3D模型预览（使用Three.js）
 
-## 跨域支持
+## 8. 未实现的接口
+
+以下接口在API文档中定义，但尚未在系统中实现：
+
+- 3D-Lab Data Factory相关接口（资源管理、场景生成、机器人虚拟操作等）
+
+这些接口将在后续版本中实现。
+
+## 9. 跨域支持
 
 本服务已配置跨域支持：
 - 允许所有源
