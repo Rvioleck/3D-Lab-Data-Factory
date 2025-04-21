@@ -24,7 +24,7 @@
             </div>
           </div>
         </div>
-        
+
         <div class="col-lg-8">
           <div class="card mb-4">
             <div class="card-body">
@@ -83,7 +83,7 @@
               </div>
             </div>
           </div>
-          
+
           <div class="row">
             <div class="col-md-6">
               <div class="card mb-4">
@@ -97,21 +97,13 @@
               </div>
             </div>
             <div class="col-md-6">
-              <div class="card mb-4">
-                <div class="card-body">
-                  <h5 class="card-title">账号活动</h5>
-                  <p class="card-text">查看您的账号活动记录</p>
-                  <button class="btn btn-outline-secondary" disabled>
-                    <i class="bi bi-clock-history me-2"></i>查看活动
-                  </button>
-                </div>
-              </div>
+              <UserActivityLog :userId="user?.id" />
             </div>
           </div>
         </div>
       </div>
     </div>
-    
+
     <!-- 编辑资料模态框 -->
     <div class="modal fade" id="editProfileModal" tabindex="-1" aria-hidden="true" ref="editProfileModalRef">
       <div class="modal-dialog">
@@ -157,7 +149,7 @@
         </div>
       </div>
     </div>
-    
+
     <!-- 修改密码模态框 -->
     <div class="modal fade" id="changePasswordModal" tabindex="-1" aria-hidden="true" ref="changePasswordModalRef">
       <div class="modal-dialog">
@@ -225,22 +217,26 @@ import { ref, computed, onMounted } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
 import { Modal } from 'bootstrap'
-import { getLoginUser } from '@/api/user'
+import { getLoginUser, updateUserProfile, updateUserPassword } from '@/api/user'
+import UserActivityLog from '@/components/UserActivityLog.vue'
 
 export default {
   name: 'ProfileView',
+  components: {
+    UserActivityLog
+  },
   setup() {
     const store = useStore()
     const router = useRouter()
-    
+
     // 用户信息
     const user = computed(() => store.getters['user/currentUser'])
-    
+
     // 如果未登录，重定向到登录页
     if (!store.getters['user/isLoggedIn']) {
       router.push('/login')
     }
-    
+
     // 编辑资料模态框
     const editProfileModalRef = ref(null)
     const editProfileModal = ref(null)
@@ -249,7 +245,7 @@ export default {
       userName: '',
       userProfile: ''
     })
-    
+
     // 修改密码模态框
     const changePasswordModalRef = ref(null)
     const changePasswordModal = ref(null)
@@ -259,16 +255,16 @@ export default {
       newPassword: '',
       confirmPassword: ''
     })
-    
+
     // 初始化模态框
     onMounted(() => {
       editProfileModal.value = new Modal(editProfileModalRef.value)
       changePasswordModal.value = new Modal(changePasswordModalRef.value)
-      
+
       // 刷新用户信息
       refreshUserInfo()
     })
-    
+
     // 刷新用户信息
     const refreshUserInfo = async () => {
       try {
@@ -280,7 +276,7 @@ export default {
         console.error('获取用户信息失败:', error)
       }
     }
-    
+
     // 显示编辑资料模态框
     const showEditProfileModal = () => {
       profileForm.value = {
@@ -289,27 +285,36 @@ export default {
       }
       editProfileModal.value.show()
     }
-    
+
     // 提交更新资料
     const submitUpdateProfile = async () => {
+      // 表单验证
+      if (!profileForm.value.userName) {
+        showToast('用户名不能为空', 'warning')
+        return
+      }
+
       updateProfileLoading.value = true
       try {
-        // 这里应该调用更新用户资料的API
-        // 目前后端可能没有这个接口，所以这里只是模拟
-        setTimeout(() => {
+        // 调用更新用户资料的API
+        const response = await updateUserProfile(profileForm.value)
+
+        if (response.code === 0) {
           showToast('个人资料更新成功', 'success')
           editProfileModal.value.hide()
-          updateProfileLoading.value = false
-          
-          // 刷新用户信息
-          refreshUserInfo()
-        }, 1000)
+
+          // 更新本地用户状态
+          store.commit('user/SET_CURRENT_USER', response.data)
+        } else {
+          showToast(`更新失败: ${response.message}`, 'danger')
+        }
       } catch (error) {
         showToast(`更新资料失败: ${error.message || '未知错误'}`, 'danger')
+      } finally {
         updateProfileLoading.value = false
       }
     }
-    
+
     // 显示修改密码模态框
     const showChangePasswordModal = () => {
       passwordForm.value = {
@@ -319,7 +324,7 @@ export default {
       }
       changePasswordModal.value.show()
     }
-    
+
     // 提交修改密码
     const submitChangePassword = async () => {
       // 表单验证
@@ -327,32 +332,46 @@ export default {
         showToast('请填写所有字段', 'warning')
         return
       }
-      
+
       if (passwordForm.value.newPassword.length < 8) {
         showToast('新密码长度至少为8个字符', 'warning')
         return
       }
-      
+
       if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
         showToast('两次输入的新密码不一致', 'warning')
         return
       }
-      
+
       changePasswordLoading.value = true
       try {
-        // 这里应该调用修改密码的API
-        // 目前后端可能没有这个接口，所以这里只是模拟
-        setTimeout(() => {
+        // 调用修改密码的API
+        const response = await updateUserPassword({
+          oldPassword: passwordForm.value.oldPassword,
+          newPassword: passwordForm.value.newPassword,
+          checkPassword: passwordForm.value.confirmPassword
+        })
+
+        if (response.code === 0) {
           showToast('密码修改成功', 'success')
           changePasswordModal.value.hide()
-          changePasswordLoading.value = false
-        }, 1000)
+
+          // 清空表单
+          passwordForm.value = {
+            oldPassword: '',
+            newPassword: '',
+            confirmPassword: ''
+          }
+        } else {
+          showToast(`修改失败: ${response.message}`, 'danger')
+        }
       } catch (error) {
         showToast(`修改密码失败: ${error.message || '未知错误'}`, 'danger')
+      } finally {
         changePasswordLoading.value = false
       }
     }
-    
+
     // 显示提示消息
     const showToast = (message, type = 'info') => {
       // 创建toast元素
@@ -361,7 +380,7 @@ export default {
       toastEl.setAttribute('role', 'alert')
       toastEl.setAttribute('aria-live', 'assertive')
       toastEl.setAttribute('aria-atomic', 'true')
-      
+
       // 设置内容
       toastEl.innerHTML = `
         <div class="d-flex">
@@ -371,7 +390,7 @@ export default {
           <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
         </div>
       `
-      
+
       // 添加到容器
       const toastContainer = document.getElementById('toast-container')
       if (!toastContainer) {
@@ -384,24 +403,24 @@ export default {
       } else {
         toastContainer.appendChild(toastEl)
       }
-      
+
       // 显示toast
       const toast = new bootstrap.Toast(toastEl, { delay: 3000 })
       toast.show()
-      
+
       // 自动移除
       toastEl.addEventListener('hidden.bs.toast', () => {
         toastEl.remove()
       })
     }
-    
+
     // 格式化日期时间
     const formatDateTime = (dateString) => {
       if (!dateString) return ''
       const date = new Date(dateString)
       return date.toLocaleString()
     }
-    
+
     // 获取角色文本
     const getRoleText = (role) => {
       switch (role) {
@@ -411,7 +430,7 @@ export default {
         default: return '未知角色'
       }
     }
-    
+
     // 获取角色徽章样式
     const getRoleBadgeClass = (role) => {
       switch (role) {
@@ -421,7 +440,7 @@ export default {
         default: return 'bg-secondary'
       }
     }
-    
+
     return {
       user,
       profileForm,

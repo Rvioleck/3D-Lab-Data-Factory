@@ -416,6 +416,7 @@ export default {
             onDone: async () => {
               // 保存当前的流式消息内容
               const aiContent = store.getters['chat/streamingMessage']
+              console.log('流式响应完成，内容长度:', aiContent.length)
 
               // 完成流式响应，但保留流式消息内容
               store.dispatch('chat/finishStreaming', { keepContent: true })
@@ -431,6 +432,7 @@ export default {
 
               // 将AI回复添加到消息列表
               store.commit('chat/ADD_MESSAGE', aiMessage)
+              console.log('添加AI回复到消息列表:', aiMessage.id)
 
               // 响应完成后刷新会话列表
               await store.dispatch('chat/fetchSessions')
@@ -445,6 +447,12 @@ export default {
                 // 更新临时消息的会话ID为真实会话ID
                 store.commit('chat/UPDATE_TEMP_MESSAGES_SESSION_ID', newSession.id)
               }
+
+              // 等待一小段时间确保消息渲染完成
+              await new Promise(resolve => setTimeout(resolve, 100))
+
+              // 强制触发重新渲染
+              await nextTick()
 
               // 响应完成后聚焦到输入框
               if (messageTextarea.value) {
@@ -482,8 +490,16 @@ export default {
               store.dispatch('chat/appendStreamingContent', content)
               scrollToBottom(true)
             },
-            onDone: () => {
+            onDone: async () => {
+              console.log('已有会话的流式响应完成')
               store.dispatch('chat/finishStreaming')
+
+              // 等待一小段时间确保消息渲染完成
+              await new Promise(resolve => setTimeout(resolve, 100))
+
+              // 强制触发重新渲染
+              await nextTick()
+
               // 响应完成后聚焦到输入框
               if (messageTextarea.value) {
                 messageTextarea.value.focus()

@@ -184,6 +184,7 @@ const actions = {
           createTime: new Date().toISOString()
         }
         commit('ADD_MESSAGE', message)
+        console.log('流式响应完成，添加消息到列表:', message.id)
       }
       // 如果是首次对话，消息会在ChatView中手动添加
     }
@@ -194,9 +195,11 @@ const actions = {
     }
 
     // 延迟一小段时间再关闭流式状态，确保消息渲染完成
+    // 增加延迟时间，确保有足够时间渲染markdown
     setTimeout(() => {
       commit('SET_IS_STREAMING', false)
-    }, 50)
+      console.log('流式响应状态关闭，应该显示markdown格式化内容')
+    }, 200)
   },
 
   addUserMessage({ commit }, { sessionId, content }) {

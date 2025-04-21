@@ -1,0 +1,118 @@
+/* 新拟态设计主题 */
+:root {
+  /* 主色调 - 保持原有色调但调整亮度 */
+  --primary-color: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-light: #e0e7ff;
+  
+  /* 新拟态设计特有变量 */
+  --neu-background: #f0f0f3;
+  --neu-shadow-dark: rgba(163, 177, 198, 0.6);
+  --neu-shadow-light: rgba(255, 255, 255, 0.5);
+  --neu-distance: 8px;
+  --neu-blur: 12px;
+  --neu-inner-distance: 4px;
+  --neu-inner-blur: 6px;
+  
+  /* 暗色模式新拟态 */
+  --neu-dark-background: #2d2d3a;
+  --neu-dark-shadow-dark: rgba(0, 0, 0, 0.3);
+  --neu-dark-shadow-light: rgba(67, 67, 86, 0.5);
+}
+
+/* 新拟态卡片 */
+.neu-card {
+  background: var(--neu-background);
+  border-radius: 16px;
+  box-shadow: 
+    var(--neu-distance) var(--neu-distance) var(--neu-blur) var(--neu-shadow-dark),
+    calc(-1 * var(--neu-distance)) calc(-1 * var(--neu-distance)) var(--neu-blur) var(--neu-shadow-light);
+  padding: 20px;
+  transition: all 0.3s ease;
+}
+
+.neu-card:hover {
+  box-shadow: 
+    calc(var(--neu-distance) * 0.7) calc(var(--neu-distance) * 0.7) calc(var(--neu-blur) * 0.8) var(--neu-shadow-dark),
+    calc(-1 * var(--neu-distance) * 0.7) calc(-1 * var(--neu-distance) * 0.7) calc(var(--neu-blur) * 0.8) var(--neu-shadow-light);
+}
+
+/* 新拟态按钮 */
+.neu-button {
+  background: var(--neu-background);
+  border: none;
+  border-radius: 10px;
+  padding: 12px 24px;
+  font-weight: 600;
+  color: var(--primary-color);
+  box-shadow: 
+    var(--neu-distance) var(--neu-distance) var(--neu-blur) var(--neu-shadow-dark),
+    calc(-1 * var(--neu-distance)) calc(-1 * var(--neu-distance)) var(--neu-blur) var(--neu-shadow-light);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.neu-button:hover {
+  box-shadow: 
+    calc(var(--neu-distance) * 0.5) calc(var(--neu-distance) * 0.5) calc(var(--neu-blur) * 0.7) var(--neu-shadow-dark),
+    calc(-1 * var(--neu-distance) * 0.5) calc(-1 * var(--neu-distance) * 0.5) calc(var(--neu-blur) * 0.7) var(--neu-shadow-light);
+}
+
+.neu-button:active {
+  box-shadow: 
+    inset var(--neu-inner-distance) var(--neu-inner-distance) var(--neu-inner-blur) var(--neu-shadow-dark),
+    inset calc(-1 * var(--neu-inner-distance)) calc(-1 * var(--neu-inner-distance)) var(--neu-inner-blur) var(--neu-shadow-light);
+}
+
+/* 新拟态输入框 */
+.neu-input {
+  background: var(--neu-background);
+  border: none;
+  border-radius: 10px;
+  padding: 12px 16px;
+  box-shadow: 
+    inset var(--neu-inner-distance) var(--neu-inner-distance) var(--neu-inner-blur) var(--neu-shadow-dark),
+    inset calc(-1 * var(--neu-inner-distance)) calc(-1 * var(--neu-inner-distance)) var(--neu-inner-blur) var(--neu-shadow-light);
+  transition: all 0.3s ease;
+}
+
+.neu-input:focus {
+  outline: none;
+  box-shadow: 
+    inset var(--neu-inner-distance) var(--neu-inner-distance) var(--neu-inner-blur) var(--neu-shadow-dark),
+    inset calc(-1 * var(--neu-inner-distance)) calc(-1 * var(--neu-inner-distance)) var(--neu-inner-blur) var(--neu-shadow-light),
+    0 0 0 3px rgba(79, 70, 229, 0.2);
+}
+
+/* 暗色模式新拟态 */
+.dark-theme .neu-card,
+.dark-theme .neu-button {
+  background: var(--neu-dark-background);
+  box-shadow: 
+    var(--neu-distance) var(--neu-distance) var(--neu-blur) var(--neu-dark-shadow-dark),
+    calc(-1 * var(--neu-distance)) calc(-1 * var(--neu-distance)) var(--neu-blur) var(--neu-dark-shadow-light);
+  color: #e0e0e0;
+}
+
+.dark-theme .neu-input {
+  background: var(--neu-dark-background);
+  color: #e0e0e0;
+  box-shadow: 
+    inset var(--neu-inner-distance) var(--neu-inner-distance) var(--neu-inner-blur) var(--neu-dark-shadow-dark),
+    inset calc(-1 * var(--neu-inner-distance)) calc(-1 * var(--neu-inner-distance)) var(--neu-inner-blur) var(--neu-dark-shadow-light);
+}
+
+/* 3D模型卡片特殊样式 */
+.model-card.neu-card {
+  overflow: hidden;
+  position: relative;
+}
+
+.model-card .model-preview {
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 15px;
+  box-shadow: 
+    inset var(--neu-inner-distance) var(--neu-inner-distance) var(--neu-inner-blur) var(--neu-shadow-dark),
+    inset calc(-1 * var(--neu-inner-distance)) calc(-1 * var(--neu-inner-distance)) var(--neu-inner-blur) var(--neu-shadow-light);
+}

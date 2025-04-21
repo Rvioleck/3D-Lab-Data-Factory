@@ -1,88 +1,13 @@
 <template>
   <div class="app-container" :class="{ 'dark-theme': isDarkTheme }">
-    <nav class="navbar navbar-expand-lg mb-4" :class="isDarkTheme ? 'navbar-dark bg-dark' : 'navbar-light bg-white'">
-      <div class="container">
-        <router-link class="navbar-brand" to="/home">
-          <i class="bi bi-chat-dots-fill me-2"></i>
-          AI 3D 平台
-        </router-link>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-          <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-          <ul class="navbar-nav">
-            <li class="nav-item">
-              <router-link class="nav-link" to="/home">
-                <i class="bi bi-house me-1"></i> 首页
-              </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link class="nav-link" to="/images">
-                <i class="bi bi-image me-1"></i> 图片库
-              </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link class="nav-link" to="/models">
-                <i class="bi bi-box me-1"></i> 3D模型库
-              </router-link>
-            </li>
-            <li class="nav-item" v-if="isAdmin">
-              <router-link class="nav-link" to="/reconstruction">
-                <i class="bi bi-tools me-1"></i> 3D重建
-              </router-link>
-            </li>
-          </ul>
-          <ul class="navbar-nav ms-auto">
-            <li class="nav-item">
-              <button class="btn btn-link nav-link" @click="toggleTheme">
-                <i class="bi" :class="isDarkTheme ? 'bi-sun' : 'bi-moon'"></i>
-              </button>
-            </li>
-            <li class="nav-item" v-if="!isLoggedIn">
-              <router-link class="nav-link" to="/login">
-                <i class="bi bi-box-arrow-in-right me-1"></i> 登录
-              </router-link>
-            </li>
-            <li class="nav-item" v-if="!isLoggedIn">
-              <router-link class="nav-link" to="/register">
-                <i class="bi bi-person-plus me-1"></i> 注册
-              </router-link>
-            </li>
-            <li class="nav-item dropdown" v-if="isLoggedIn">
-              <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="bi bi-person-circle me-1"></i>
-                {{ currentUser?.userName || currentUser?.userAccount }}
-              </a>
-              <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                <li>
-                  <router-link class="dropdown-item" to="/home">
-                    <i class="bi bi-person me-2"></i>个人主页
-                  </router-link>
-                </li>
-                <li v-if="isAdmin">
-                  <router-link class="dropdown-item" to="/reconstruction">
-                    <i class="bi bi-tools me-2"></i>3D重建
-                  </router-link>
-                </li>
-                <li v-if="isAdmin">
-                  <router-link class="dropdown-item" to="/chat">
-                    <i class="bi bi-chat-dots me-2"></i>AI聊天
-                  </router-link>
-                </li>
-                <li><hr class="dropdown-divider"></li>
-                <li>
-                  <a class="dropdown-item" href="#" @click.prevent="logout">
-                    <i class="bi bi-box-arrow-right me-2"></i>退出登录
-                  </a>
-                </li>
-              </ul>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </nav>
+    <!-- 使用新导航栏 -->
+    <NewNavbar
+      :isDarkTheme="isDarkTheme"
+      @toggle-theme="toggleTheme"
+    />
 
-    <div class="container mb-4">
+    <!-- 主要内容区域 -->
+    <div class="main-content">
       <router-view v-slot="{ Component }">
         <transition name="page" mode="out-in">
           <component :is="Component" class="hardware-accelerated" />
@@ -96,9 +21,13 @@
 import { computed, ref, onMounted, watch } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
+import NewNavbar from './components/NewNavbar.vue'
 
 export default {
   name: 'App',
+  components: {
+    NewNavbar
+  },
   setup() {
     const store = useStore()
     const router = useRouter()
@@ -162,37 +91,73 @@ export default {
 </script>
 
 <style>
-@import './assets/theme.css';
+@import './assets/new-theme.css';
 @import url('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+}
 
 .app-container {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 主要内容区域 */
+.main-content {
+  flex: 1;
+  padding-top: 70px; /* 为固定导航栏留出空间 */
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+/* 容器 */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+/* 响应式调整 */
+@media (max-width: 1200px) {
+  .container {
+    max-width: 100%;
+  }
 }
 
 /* 过渡动画 */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
+.page-enter-active,
+.page-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-.fade-enter-from,
-.fade-leave-to {
+.page-enter-from {
   opacity: 0;
+  transform: translateY(10px);
 }
 
-/* 导航栏样式 */
-.navbar {
-  box-shadow: var(--shadow-sm);
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
 }
 
-.navbar-brand {
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-}
-
-.nav-link {
-  display: flex;
-  align-items: center;
+/* 硬件加速 */
+.hardware-accelerated {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
 }
 </style>

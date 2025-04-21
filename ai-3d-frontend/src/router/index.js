@@ -9,12 +9,24 @@ const routes = [
   {
     path: '/home',
     name: 'Home',
+    component: () => import('../views/NewHomeView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/classic-home',
+    name: 'ClassicHome',
     component: () => import('../views/HomeView.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/login',
     name: 'Login',
+    component: () => import('../views/auth/ModernLoginView.vue'),
+    meta: { requiresAuth: false }
+  },
+  {
+    path: '/classic-login',
+    name: 'ClassicLogin',
     component: () => import('../views/LoginView.vue'),
     meta: { requiresAuth: false }
   },
@@ -55,39 +67,21 @@ const routes = [
     meta: { requiresAuth: true, requiresAdmin: true }
   },
   {
-    path: '/reconstruction/:imageId',
-    name: 'ReconstructionWithImage',
-    component: () => import('../views/ReconstructionView.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true }
-  },
-  {
-    path: '/resources',
-    name: 'Resources',
-    redirect: '/images',
-    meta: { requiresAuth: true }
-  },
-  {
     path: '/health',
     name: 'Health',
     component: () => import('../views/HealthView.vue'),
     meta: { requiresAuth: true }
   },
   {
-    path: '/profile',
-    name: 'Profile',
-    redirect: '/home',
-    meta: { requiresAuth: true }
+    path: '/chat',
+    name: 'Chat',
+    component: () => import('../views/ChatView.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
   },
   {
     path: '/admin/users',
     name: 'UserManagement',
-    redirect: '/home',
-    meta: { requiresAuth: true, requiresAdmin: true }
-  },
-  {
-    path: '/chat',
-    name: 'Chat',
-    component: () => import('../views/ChatView.vue'),
+    component: () => import('../views/admin/UserManagementView.vue'),
     meta: { requiresAuth: true, requiresAdmin: true }
   },
   {

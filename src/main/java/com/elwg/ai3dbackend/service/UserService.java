@@ -118,4 +118,14 @@ public interface UserService extends IService<User> {
      * @return 加密后的密码
      */
     String encryptPassword(String password);
+
+    /**
+     * 物理删除用户
+     * 完全从数据库中删除用户记录，而不是逻辑删除
+     * 该方法可以删除已经逻辑删除的用户，也可以删除正常用户
+     *
+     * @param id 用户ID
+     * @return 是否删除成功
+     */
+    boolean physicalDeleteUser(Long id);
 }

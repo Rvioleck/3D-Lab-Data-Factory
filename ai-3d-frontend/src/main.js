@@ -7,6 +7,11 @@ import store from './store'
 import './assets/animations.css'
 import './assets/loading.css'
 
+// 导入新设计样式
+import './assets/new-theme.css'
+import './assets/3d-effects.css'
+import './assets/glassmorphism.css'
+
 // 创建应用实例
 const app = createApp(App)
 

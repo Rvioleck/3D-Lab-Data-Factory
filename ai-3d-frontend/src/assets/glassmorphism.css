@@ -1,0 +1,122 @@
+/* 玻璃态设计样式 */
+
+:root {
+  --glass-bg: rgba(255, 255, 255, 0.15);
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  --glass-blur: 10px;
+  
+  /* 暗色模式玻璃态 */
+  --glass-dark-bg: rgba(20, 20, 30, 0.7);
+  --glass-dark-border: rgba(255, 255, 255, 0.08);
+}
+
+/* 玻璃态卡片 */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  box-shadow: var(--glass-shadow);
+  padding: 20px;
+  transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  transform: translateY(-5px);
+}
+
+/* 玻璃态按钮 */
+.glass-button {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 12px 24px;
+  color: white;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.glass-button:hover {
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* 玻璃态导航栏 */
+.glass-navbar {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border-bottom: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+/* 玻璃态输入框 */
+.glass-input {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.glass-input:focus {
+  background: rgba(255, 255, 255, 0.15);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
+}
+
+.glass-input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* 暗色模式玻璃态 */
+.dark-theme .glass-card,
+.dark-theme .glass-button,
+.dark-theme .glass-navbar {
+  background: var(--glass-dark-bg);
+  border-color: var(--glass-dark-border);
+}
+
+.dark-theme .glass-input {
+  background: rgba(0, 0, 0, 0.2);
+  border-color: var(--glass-dark-border);
+}
+
+.dark-theme .glass-input:focus {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* 玻璃态背景 */
+.glass-background {
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-background::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('/path/to/background.jpg') center/cover no-repeat;
+  filter: blur(20px);
+  z-index: -1;
+  transform: scale(1.1);
+}
+
+/* 玻璃态分割线 */
+.glass-divider {
+  height: 1px;
+  background: var(--glass-border);
+  margin: 20px 0;
+}

@@ -55,14 +55,59 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 ErrorCode.PARAMS_ERROR, "用户密码过短");
         ThrowUtils.throwIf(!userPassword.equals(checkPassword),
                 ErrorCode.PARAMS_ERROR, "两次输入的密码不一致");
-        // 2. 校验账号是否已存在
+        // 2. 校验账号是否已存在（只检查未被逻辑删除的账号）
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("userAccount", userAccount);
+        queryWrapper.eq("isDelete", 0); // 只检查未被逻辑删除的账号
         long count = baseMapper.selectCount(queryWrapper);
         ThrowUtils.throwIf(count > 0, ErrorCode.PARAMS_ERROR, "账号重复");
-        // 3. 密码加密
+
+        // 3. 检查是否存在已被逻辑删除的同名账号，如果存在则物理删除它
+        // 使用自定义的Mapper方法查询已被逻辑删除的用户
+        User deletedUser = baseMapper.selectOneByAccountLogicDeleted(userAccount);
+
+        if (deletedUser != null) {
+            log.info("发现已被逻辑删除的同名账号: {}, 尝试物理删除", userAccount);
+
+            // 查询所有已被逻辑删除的同名账号，而不仅仅是第一个
+            List<User> deletedUsers = baseMapper.selectListByAccountLogicDeleted(userAccount);
+
+            log.info("发现 {} 个已被逻辑删除的同名账号: {}", deletedUsers.size(), userAccount);
+
+            // 逐个删除所有已被逻辑删除的同名账号
+            for (User user : deletedUsers) {
+                // 使用现有的物理删除方法，避免代码重复
+                boolean deleteResult = physicalDeleteUser(user.getId());
+
+                // 记录删除结果，但不中断流程
+                if (!deleteResult) {
+                    log.warn("物理删除已被逻辑删除的账号失败: ID={}, 账号={}",
+                            user.getId(), userAccount);
+                } else {
+                    log.info("成功物理删除已被逻辑删除的账号: ID={}, 账号={}",
+                            user.getId(), userAccount);
+                }
+            }
+
+            // 再次检查是否还有同名账号（以防删除失败或有多个同名账号）
+            long remainingCount = baseMapper.countByAccountIgnoreLogicDelete(userAccount);
+
+            if (remainingCount > 0) {
+                log.warn("删除后仍存在同名账号: {}, 数量: {}", userAccount, remainingCount);
+
+                // 再次检查是否有未被逻辑删除的同名账号
+                long activeCount = baseMapper.countByAccountActive(userAccount);
+
+                // 如果还有未被逻辑删除的同名账号，则拒绝注册
+                if (activeCount > 0) {
+                    log.error("存在未被逻辑删除的同名账号: {}, 数量: {}, 拒绝注册", userAccount, activeCount);
+                    throw new BusinessException(ErrorCode.PARAMS_ERROR, "账号重复");
+                }
+            }
+        }
+        // 4. 密码加密
         String encryptPassword = getEncryptPassword(userPassword);
-        // 4. 插入用户数据
+        // 5. 插入用户数据
         User user = new User();
         user.setUserAccount(userAccount);
         user.setUserPassword(encryptPassword);
@@ -92,10 +137,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 ErrorCode.PARAMS_ERROR, "密码错误");
         // 2. 加密密码
         String encryptPassword = getEncryptPassword(userPassword);
-        // 3. 查询用户是否存在
+        // 3. 查询用户是否存在（只查询未被逻辑删除的用户）
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("userAccount", userAccount);
         queryWrapper.eq("userPassword", encryptPassword);
+        queryWrapper.eq("isDelete", 0); // 只查询未被逻辑删除的用户
         User user = baseMapper.selectOne(queryWrapper);
         // 4. 用户不存在或被封号
         if (user == null) {
@@ -436,5 +482,62 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
 
         return false;
+    }
+
+    /**
+     * 物理删除用户
+     * 完全从数据库中删除用户记录，而不是逻辑删除
+     *
+     * @param id 用户ID
+     * @return 是否删除成功
+     */
+    @Override
+    public boolean physicalDeleteUser(Long id) {
+        if (id == null || id <= 0) {
+            log.error("物理删除用户失败: 用户ID不合法 {}", id);
+            return false;
+        }
+
+        // 检查用户是否存在（包括逻辑删除的用户）
+        // 使用自定义的Mapper方法查询用户，包括已被逻辑删除的用户
+        User user = baseMapper.selectByIdIgnoreLogicDelete(id);
+
+        if (user == null) {
+            log.warn("物理删除用户失败: 用户不存在 {}", id);
+            return false; // 如果用户不存在，返回删除失败，而不是抛出异常
+        }
+
+        // 记录要删除的用户信息，便于调试
+        log.info("尝试物理删除用户: ID={}, 账号={}, 逻辑删除状态={}",
+                id, user.getUserAccount(), user.getIsDelete());
+
+        // 使用自定义的物理删除方法，绕过MyBatis-Plus的逻辑删除机制
+        try {
+            // 使用自定义的物理删除方法
+            int result = baseMapper.physicalDeleteById(id);
+
+            if (result > 0) {
+                log.info("物理删除用户成功: {}", id);
+                return true;
+            } else {
+                log.warn("使用自定义方法删除失败，尝试使用原生方式删除");
+                // 如果删除失败，尝试使用原生的SQL执行删除
+                result = baseMapper.delete(
+                    new QueryWrapper<User>().eq("id", id)
+                        .last("LIMIT 1") // 限制只删除一条记录，增加安全性
+                );
+
+                if (result > 0) {
+                    log.info("使用QueryWrapper物理删除用户成功: {}", id);
+                    return true;
+                } else {
+                    log.error("物理删除用户失败: {}", id);
+                    return false;
+                }
+            }
+        } catch (Exception e) {
+            log.error("物理删除用户异常: {}, 错误: {}", id, e.getMessage());
+            return false;
+        }
     }
 }

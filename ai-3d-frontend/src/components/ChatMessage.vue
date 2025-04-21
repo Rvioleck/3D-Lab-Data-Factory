@@ -87,7 +87,9 @@ export default {
     const formattedContent = computed(() => {
       try {
         // 使用marked库解析Markdown
-        return marked.parse(props.message.content)
+        const parsed = marked.parse(props.message.content);
+        console.log('ChatMessage: Markdown解析成功，消息ID:', props.message.id);
+        return parsed;
       } catch (error) {
         console.error('Markdown解析错误:', error)
         // 降级处理

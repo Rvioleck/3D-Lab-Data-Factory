@@ -15,6 +15,8 @@ import com.elwg.ai3dbackend.exception.ErrorCode;
 import com.elwg.ai3dbackend.exception.ThrowUtils;
 import com.elwg.ai3dbackend.model.dto.UserCreateRequest;
 import com.elwg.ai3dbackend.model.dto.UserLoginRequest;
+import com.elwg.ai3dbackend.model.dto.UserPasswordUpdateRequest;
+import com.elwg.ai3dbackend.model.dto.UserProfileUpdateRequest;
 import com.elwg.ai3dbackend.model.dto.UserQueryRequest;
 import com.elwg.ai3dbackend.model.dto.UserRegisterRequest;
 import com.elwg.ai3dbackend.model.dto.UserUpdateRequest;
@@ -487,5 +489,120 @@ public class UserController {
                 .collect(Collectors.toList());
 
         return ResultUtils.success(result);
+    }
+
+    /**
+     * 更新当前用户个人资料
+     * <p>
+     * 该接口允许已登录用户更新自己的个人资料，包括用户名、头像和简介。
+     * 更新成功后返回更新后的用户信息。
+     * </p>
+     *
+     * @param profileUpdateRequest 个人资料更新请求体
+     * @param request HTTP请求对象
+     * @return 包含更新后的用户信息的响应对象
+     */
+    @PostMapping("/profile/update")
+    @ApiOperation(value = "更新个人资料", notes = "更新当前登录用户的个人资料")
+    public BaseResponse<UserVO> updateUserProfile(@RequestBody UserProfileUpdateRequest profileUpdateRequest,
+                                                 HttpServletRequest request) {
+        // 参数校验
+        ThrowUtils.throwIf(profileUpdateRequest == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
+
+        // 获取当前登录用户
+        User loginUser = userService.getLoginUser(request);
+
+        // 创建新的用户对象并设置ID
+        User user = new User();
+        user.setId(loginUser.getId());
+
+        // 设置要更新的字段
+        if (StrUtil.isNotBlank(profileUpdateRequest.getUserName())) {
+            user.setUserName(profileUpdateRequest.getUserName());
+        }
+
+        if (StrUtil.isNotBlank(profileUpdateRequest.getUserAvatar())) {
+            user.setUserAvatar(profileUpdateRequest.getUserAvatar());
+        }
+
+        if (StrUtil.isNotBlank(profileUpdateRequest.getUserProfile())) {
+            user.setUserProfile(profileUpdateRequest.getUserProfile());
+        }
+
+        // 设置编辑时间
+        user.setEditTime(new Date());
+
+        // 保留原始用户角色，防止普通用户通过个人资料更新修改自己的角色
+        // 注意：这里不设置角色，因为在updateById中，如果字段为null则不会更新该字段
+
+        // 更新用户信息
+        boolean result = userService.updateById(user);
+        ThrowUtils.throwIf(!result, ErrorCode.SYSTEM_ERROR, "更新失败");
+
+        // 获取更新后的用户信息
+        User updatedUser = userService.getById(loginUser.getId());
+        UserVO userVO = userService.toUserVO(updatedUser);
+
+        // 更新会话中的用户信息
+        request.getSession().setAttribute(UserConstant.USER_LOGIN_STATE, userVO);
+
+        return ResultUtils.success(userVO);
+    }
+
+    /**
+     * 修改当前用户密码
+     * <p>
+     * 该接口允许已登录用户修改自己的密码。
+     * 修改成功后返回true。
+     * </p>
+     *
+     * @param passwordUpdateRequest 密码更新请求体
+     * @param request HTTP请求对象
+     * @return 包含修改结果的响应对象
+     */
+    @PostMapping("/password/update")
+    @ApiOperation(value = "修改密码", notes = "修改当前登录用户的密码")
+    public BaseResponse<Boolean> updateUserPassword(@RequestBody UserPasswordUpdateRequest passwordUpdateRequest,
+                                                  HttpServletRequest request) {
+        // 参数校验
+        ThrowUtils.throwIf(passwordUpdateRequest == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
+
+        String oldPassword = passwordUpdateRequest.getOldPassword();
+        String newPassword = passwordUpdateRequest.getNewPassword();
+        String checkPassword = passwordUpdateRequest.getCheckPassword();
+
+        ThrowUtils.throwIf(StrUtil.hasBlank(oldPassword, newPassword, checkPassword),
+                ErrorCode.PARAMS_ERROR, "密码参数不能为空");
+
+        // 校验新密码长度
+        ThrowUtils.throwIf(newPassword.length() < 8, ErrorCode.PARAMS_ERROR, "新密码长度不能小于8");
+
+        // 校验两次输入的新密码是否一致
+        ThrowUtils.throwIf(!newPassword.equals(checkPassword), ErrorCode.PARAMS_ERROR, "两次输入的新密码不一致");
+
+        // 获取当前登录用户
+        User loginUser = userService.getLoginUser(request);
+
+        // 验证旧密码是否正确
+        // 获取加密后的旧密码
+        String encryptedOldPassword = userService.encryptPassword(oldPassword);
+
+        // 比较加密后的旧密码与数据库中的密码是否一致
+        ThrowUtils.throwIf(!encryptedOldPassword.equals(loginUser.getUserPassword()),
+                ErrorCode.PARAMS_ERROR, "旧密码不正确");
+
+        // 加密新密码
+        String encryptedNewPassword = userService.encryptPassword(newPassword);
+
+        // 更新密码
+        User user = new User();
+        user.setId(loginUser.getId());
+        user.setUserPassword(encryptedNewPassword);
+        user.setEditTime(new Date());
+
+        boolean result = userService.updateById(user);
+        ThrowUtils.throwIf(!result, ErrorCode.SYSTEM_ERROR, "密码更新失败");
+
+        return ResultUtils.success(true);
     }
 }

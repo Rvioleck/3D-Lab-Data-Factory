@@ -1,0 +1,71 @@
+@startuml
+title 3D重建流程时序图
+
+participant "前端 (浏览器)" as Frontend
+participant "后端 - Java" as BackendJava
+participant "Python 服务 - FastAPI" as PythonService
+participant "对象存储 (COS)" as ObjectStorage
+
+activate Frontend
+
+group 用户上传图像
+    Frontend -> BackendJava ++ : 1a. HTTP POST /picture/upload
+    BackendJava -> ObjectStorage ++ : 1b. 存储图片
+    deactivate ObjectStorage
+    BackendJava --> Frontend -- : 1c. 返回图片信息 (ID, URL)
+end
+
+group 用户发起3D重建任务
+    Frontend -> BackendJava ++ : 2a. HTTP POST /api/reconstruction/create-from-image (图片ID)
+    BackendJava --> Frontend -- : 2b. 返回 TaskID, SSE URL
+
+    note over Frontend : 用户根据返回的URL建立SSE连接
+    Frontend -> BackendJava ++ : 3. GET /api/reconstruction/events/{taskId} (SSE 连接)
+    note right of Frontend : 监听此 TaskID 的服务器推送事件
+
+    note over BackendJava : 后端触发异步重建任务
+    BackendJava -> PythonService ++ : 4. HTTP POST /generate3d (异步任务)
+    ' Python 服务立即响应，并在后台开始处理
+    ' BackendJava 保持对 Frontend 的 SSE 连接活跃
+    note right of PythonService : 5. Python 服务开始后台处理...
+
+    ' --- 后续为 Python 服务处理完成后的异步回调 ---
+    note over PythonService, BackendJava : Python 服务处理中...\n(可能需要一段时间)\n完成后通过回调通知后端
+
+    PythonService -> BackendJava ++ : 6a. POST /callback/result/{taskId} (pixel_images.png)
+    activate BackendJava
+    BackendJava -> ObjectStorage ++ : 7a. 存储 pixel_images.png 到 COS
+    deactivate ObjectStorage
+    BackendJava -> BackendJava : 7a. 更新数据库记录
+    BackendJava --> Frontend : 8a. 推送 SSE (结果: pixel_images)
+    deactivate BackendJava
+
+    PythonService -> BackendJava ++ : 6b. POST /callback/result/{taskId} (xyz_images.png)
+    activate BackendJava
+    BackendJava -> ObjectStorage ++ : 7b. 存储 xyz_images.png 到 COS
+    deactivate ObjectStorage
+    BackendJava -> BackendJava : 7b. 更新数据库记录
+    BackendJava --> Frontend : 8b. 推送 SSE (结果: xyz_images)
+    deactivate BackendJava
+
+    PythonService -> BackendJava ++ : 6c. POST /callback/result/{taskId} (output3d.zip)
+    activate BackendJava
+    BackendJava -> ObjectStorage ++ : 7c. 存储 output3d.zip 到 COS
+    deactivate ObjectStorage
+    BackendJava -> BackendJava : 7c. 更新数据库记录
+    BackendJava --> Frontend : 8c. 推送 SSE (结果: output3d)
+    deactivate BackendJava
+
+    PythonService -> BackendJava ++ : 6d. POST /callback/status (完成/失败)
+    deactivate PythonService
+    activate BackendJava
+    BackendJava -> BackendJava : 7d. 更新数据库状态 (完成/失败)
+    BackendJava --> Frontend -- : 8d. 推送 SSE (状态: 完成/失败)
+    ' 后端此时可能关闭与此任务相关的SSE连接，或等待前端断开
+    deactivate BackendJava
+    ' 前端收到最终状态后可能关闭SSE连接
+end
+
+deactivate Frontend
+
+@enduml

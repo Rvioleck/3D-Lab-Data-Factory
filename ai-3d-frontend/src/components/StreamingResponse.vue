@@ -65,7 +65,9 @@ export default {
     const formattedContent = computed(() => {
       try {
         // 使用marked库解析Markdown
-        return marked.parse(props.content)
+        const parsed = marked.parse(props.content);
+        console.log('Markdown解析成功，长度:', parsed.length);
+        return parsed;
       } catch (error) {
         console.error('Markdown解析错误:', error)
         // 降级处理
