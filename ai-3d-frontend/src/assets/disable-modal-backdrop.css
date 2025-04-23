@@ -1,0 +1,27 @@
+/**
+ * 完全禁用 Bootstrap 模态框背景遮罩
+ */
+
+/* 禁用模态框背景遮罩 */
+.modal-backdrop {
+  display: none !important;
+  opacity: 0 !important;
+  background: none !important;
+  pointer-events: none !important;
+}
+
+/* 确保模态框本身仍然可见 */
+.modal {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+/* 确保模态框内容有背景色 */
+.modal-content {
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+}
+
+/* 确保body不会被锁定 */
+body.modal-open {
+  overflow: auto !important;
+  padding-right: 0 !important;
+}

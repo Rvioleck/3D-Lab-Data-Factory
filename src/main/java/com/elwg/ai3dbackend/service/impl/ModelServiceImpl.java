@@ -22,9 +22,9 @@ public class ModelServiceImpl extends ServiceImpl<ModelMapper, Model> implements
      * @return 模型实体，如果不存在则返回null
      */
     @Override
-    public Model getModelByTaskId(String taskId) {
+    public Model getModelByTaskId(Long taskId) {
         LambdaQueryWrapper<Model> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(Model::getTaskId, taskId);
+        queryWrapper.eq(Model::getTaskId, taskId.toString());
         return getOne(queryWrapper);
     }
 

@@ -39,9 +39,7 @@ import java.util.stream.Collectors;
 
 /**
  * 图片资源控制器
- * <p>
  * 提供图片资源管理相关的API接口
- * </p>
  */
 @RestController
 @RequestMapping("/picture")
@@ -139,26 +137,23 @@ public class PictureController {
             picture.setUserId(loginUser.getId());
 
             // 设置图片尺寸信息
-            if (imageInfo != null) {
-                Integer width = (Integer) imageInfo.get("width");
-                Integer height = (Integer) imageInfo.get("height");
-                picture.setPicWidth(width);
-                picture.setPicHeight(height);
-                if (width != null && height != null && height != 0) {
-                    picture.setPicScale((double) width / height);
-                }
+            Integer width = (Integer) imageInfo.get("width");
+            Integer height = (Integer) imageInfo.get("height");
+            picture.setPicWidth(width);
+            picture.setPicHeight(height);
+            if (width != null && height != null && height != 0) {
+                picture.setPicScale((double) width / height);
             }
 
             // 保存图片记录
-            boolean saveResult = pictureService.save(picture);
+            boolean saveResult = pictureService.save(picture); // 自动回填图片ID
             ThrowUtils.throwIf(!saveResult, ErrorCode.OPERATION_ERROR, "图片信息保存失败");
 
             // 转换为VO对象
             PictureVO pictureVO = new PictureVO();
             BeanUtils.copyProperties(picture, pictureVO);
-
-            // 设置是否有关联的3D模型
-            pictureVO.setHasModel(modelService.getModelBySourceImageId(picture.getId()) != null);
+            // 默认没有关联的3D模型
+            pictureVO.setHasModel(false);
 
             return ResultUtils.success(pictureVO);
         } catch (IOException e) {
@@ -288,15 +283,11 @@ public class PictureController {
      */
     @PostMapping("/update")
     @ApiOperation(value = "更新图片信息", notes = "更新图片的基本信息")
-    @AuthCheck(mustRole = UserConstant.USER_ROLE)
     public BaseResponse<Boolean> updatePicture(@RequestBody PictureUpdateRequest pictureUpdateRequest,
                                                HttpServletRequest request) {
         // 校验参数
         ThrowUtils.throwIf(pictureUpdateRequest == null, ErrorCode.PARAMS_ERROR);
-
-        // 获取当前登录用户 - 通过AuthCheck注解已经确保用户已登录
         User loginUser = userService.getLoginUser(request);
-
         // 查询图片
         Long id = pictureUpdateRequest.getId();
         Picture picture = pictureService.getById(id);
@@ -330,7 +321,6 @@ public class PictureController {
      */
     @PostMapping("/delete")
     @ApiOperation(value = "删除图片", notes = "删除图片及其存储文件")
-    @AuthCheck(mustRole = UserConstant.USER_ROLE)
     public BaseResponse<Boolean> deletePicture(@RequestBody DeleteRequest deleteRequest,
                                                HttpServletRequest request) {
         // 校验参数
@@ -349,7 +339,6 @@ public class PictureController {
         if (!picture.getUserId().equals(loginUser.getId()) && !UserConstant.ADMIN_ROLE.equals(loginUser.getUserRole())) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权限删除");
         }
-
         // 检查是否有关联的3D模型
         if (modelService.getModelBySourceImageId(id) != null) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "该图片已关联3D模型，无法删除");

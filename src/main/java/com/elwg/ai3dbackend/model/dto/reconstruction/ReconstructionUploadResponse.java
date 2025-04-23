@@ -17,13 +17,8 @@ public class ReconstructionUploadResponse {
 
     /**
      * 任务ID
+     * 客户端可以使用此ID构建SSE URL: /api/reconstruction/events/{taskId}
      */
-    @ApiModelProperty(value = "任务ID", example = "1234567890abcdef1234567890abcdef")
-    private String taskId;
-
-    /**
-     * SSE URL
-     */
-    @ApiModelProperty(value = "SSE URL", example = "/api/reconstruction/events/1234567890abcdef1234567890abcdef")
-    private String sseUrl;
+    @ApiModelProperty(value = "任务ID", example = "1")
+    private Long taskId;
 }

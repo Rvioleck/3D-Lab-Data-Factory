@@ -263,6 +263,7 @@ import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
 import { Modal } from 'bootstrap'
 import debounce from 'lodash/debounce'
+import { cleanupModals } from '@/utils/modalFix'
 import {
   uploadPicture,
   listPictureByPage,
@@ -417,10 +418,11 @@ export default {
         previewUrl: null
       }
 
-      // 显示模态框
-      if (!uploadModal.value) {
-        uploadModal.value = new Modal(document.getElementById('uploadModal'))
-      }
+      // 显示模态框，禁用背景遮罩
+      uploadModal.value = new Modal(document.getElementById('uploadModal'), {
+        backdrop: false,
+        keyboard: true
+      })
       uploadModal.value.show()
     }
 
@@ -490,6 +492,8 @@ export default {
           // 关闭模态框
           if (uploadModal.value) {
             uploadModal.value.hide()
+            // 清除模态框背景
+            setTimeout(cleanupModals, 100)
           }
 
           // 重新加载图片列表
@@ -519,15 +523,23 @@ export default {
     const viewImage = (image) => {
       selectedImage.value = image
 
-      if (!imageDetailModal.value) {
-        imageDetailModal.value = new Modal(document.getElementById('imageDetailModal'))
-      }
+      // 显示模态框，禁用背景遮罩
+      imageDetailModal.value = new Modal(document.getElementById('imageDetailModal'), {
+        backdrop: false,
+        keyboard: true
+      })
       imageDetailModal.value.show()
     }
 
     const createModel = (image) => {
-      // 跳转到重建页面，并传递图片ID
-      router.push(`/reconstruction/${image.id}`)
+      // 跳转到重建页面，并传递图片ID和自动创建参数
+      router.push({
+        path: '/reconstruction',
+        query: {
+          imageId: image.id,
+          autoCreate: 'true'
+        }
+      })
     }
 
     const viewModel = (image) => {
@@ -539,9 +551,11 @@ export default {
     const confirmDeleteImage = (image) => {
       imageToDelete.value = image
 
-      if (!deleteConfirmModal.value) {
-        deleteConfirmModal.value = new Modal(document.getElementById('deleteConfirmModal'))
-      }
+      // 显示模态框，禁用背景遮罩
+      deleteConfirmModal.value = new Modal(document.getElementById('deleteConfirmModal'), {
+        backdrop: false,
+        keyboard: true
+      })
       deleteConfirmModal.value.show()
     }
 
@@ -556,6 +570,8 @@ export default {
           // 关闭模态框
           if (deleteConfirmModal.value) {
             deleteConfirmModal.value.hide()
+            // 清除模态框背景
+            setTimeout(cleanupModals, 100)
           }
 
           // 重新加载图片列表
@@ -620,6 +636,9 @@ export default {
       loadImages()
       loadCategories()
       loadTags()
+
+      // 初始化时清除模态框背景
+      cleanupModals()
     })
 
     return {

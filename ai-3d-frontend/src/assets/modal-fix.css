@@ -1,0 +1,59 @@
+/**
+ * 模态框修复样式 - 简化版
+ *
+ * 解决模态框背景遮罩层未正确移除的问题
+ */
+
+/* 当没有可见模态框时隐藏背景层 */
+body:not(:has(.modal.show)) .modal-backdrop {
+  display: none !important;
+  opacity: 0 !important;
+}
+
+/* 当没有可见模态框时恢复正常滚动 */
+body:not(:has(.modal.show)).modal-open {
+  overflow: auto !important;
+  padding-right: 0 !important;
+}
+
+/* 确保模态框背景在关闭后被正确移除 */
+.modal-backdrop.fade:not(.show) {
+  opacity: 0 !important;
+  display: none !important;
+}
+
+/* 修复模态框层叠问题 */
+.modal-backdrop {
+  z-index: 1040 !important;
+}
+
+.modal {
+  z-index: 1050 !important;
+}
+
+/* 防止模态框内容溢出 */
+.modal-body {
+  overflow-y: auto;
+  max-height: calc(100vh - 200px);
+}
+
+/* 紧急修复按钮样式 */
+.modal-emergency-fix {
+  position: fixed;
+  bottom: 15px;
+  right: 15px;
+  z-index: 9999;
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 5px;
+  font-weight: bold;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  display: none;
+}
+
+/* 当有模态框背景但没有可见模态框时显示按钮 */
+body.modal-open:not(:has(.modal.show)) .modal-emergency-fix {
+  display: block;
+}

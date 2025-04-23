@@ -17,7 +17,7 @@ public interface ModelService extends IService<Model> {
      * @param taskId 任务ID
      * @return 模型实体，如果不存在则返回null
      */
-    Model getModelByTaskId(String taskId);
+    Model getModelByTaskId(Long taskId);
 
     /**
      * 根据源图片ID查询模型

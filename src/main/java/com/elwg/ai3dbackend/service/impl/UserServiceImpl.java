@@ -5,12 +5,17 @@ import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.elwg.ai3dbackend.common.DeleteRequest;
 import com.elwg.ai3dbackend.constant.UserConstant;
 import com.elwg.ai3dbackend.exception.BusinessException;
 import com.elwg.ai3dbackend.exception.ErrorCode;
 import com.elwg.ai3dbackend.exception.ThrowUtils;
 import com.elwg.ai3dbackend.mapper.UserMapper;
+import com.elwg.ai3dbackend.model.dto.UserCreateRequest;
+import com.elwg.ai3dbackend.model.dto.UserPasswordUpdateRequest;
+import com.elwg.ai3dbackend.model.dto.UserProfileUpdateRequest;
 import com.elwg.ai3dbackend.model.dto.UserQueryRequest;
+import com.elwg.ai3dbackend.model.dto.UserUpdateRequest;
 import com.elwg.ai3dbackend.model.entity.User;
 import com.elwg.ai3dbackend.model.enums.UserRoleEnum;
 import com.elwg.ai3dbackend.model.vo.UserDetailVO;
@@ -20,6 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.Date;
 import java.util.List;
@@ -485,6 +491,183 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     /**
+     * 验证用户注册参数
+     *
+     * @param userAccount   用户账号
+     * @param userPassword  用户密码
+     * @param checkPassword 确认密码
+     */
+    private void validateUserRegister(String userAccount, String userPassword, String checkPassword) {
+        // 参数不能为空
+        ThrowUtils.throwIf(StrUtil.hasBlank(userAccount, userPassword, checkPassword),
+                ErrorCode.PARAMS_ERROR, "参数为空");
+
+        // 账号长度不能小于4
+        ThrowUtils.throwIf(userAccount.length() < 4,
+                ErrorCode.PARAMS_ERROR, "用户账号长度不能小于4");
+
+        // 密码长度不能小于8
+        ThrowUtils.throwIf(userPassword.length() < 8,
+                ErrorCode.PARAMS_ERROR, "用户密码长度不能小于8");
+
+        // 两次输入的密码必须一致
+        ThrowUtils.throwIf(!userPassword.equals(checkPassword),
+                ErrorCode.PARAMS_ERROR, "两次输入的密码不一致");
+    }
+
+    /**
+     * 验证用户创建参数
+     *
+     * @param userCreateRequest 用户创建请求
+     * @param currentUser       当前操作的用户（用于权限检查）
+     */
+    private void validateUserCreate(UserCreateRequest userCreateRequest, User currentUser) {
+        ThrowUtils.throwIf(userCreateRequest == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
+
+        String userAccount = userCreateRequest.getUserAccount();
+        String userPassword = userCreateRequest.getUserPassword();
+        String checkPassword = userCreateRequest.getCheckPassword();
+        String userRole = userCreateRequest.getUserRole();
+
+        // 基本参数校验
+        validateUserRegister(userAccount, userPassword, checkPassword);
+
+        // 校验用户角色是否合法
+        if (StrUtil.isNotBlank(userRole)) {
+            validateUserRole(userRole, currentUser);
+        }
+    }
+
+    /**
+     * 验证用户更新参数
+     *
+     * @param userUpdateRequest 用户更新请求
+     * @param currentUser       当前操作的用户（用于权限检查）
+     * @param oldUser           被更新的用户
+     * @param adminCount        管理员数量（用于检查是否可以降级管理员）
+     */
+    private void validateUserUpdate(UserUpdateRequest userUpdateRequest, User currentUser, User oldUser, long adminCount) {
+        ThrowUtils.throwIf(userUpdateRequest == null || userUpdateRequest.getId() == null,
+                ErrorCode.PARAMS_ERROR, "请求参数为空");
+
+        // 校验用户角色是否合法
+        String userRole = userUpdateRequest.getUserRole();
+        if (StrUtil.isNotBlank(userRole)) {
+            UserRoleEnum roleEnum = UserRoleEnum.getEnumByValue(userRole);
+            ThrowUtils.throwIf(roleEnum == null, ErrorCode.PARAMS_ERROR, "用户角色不合法");
+
+            // 如果非管理员尝试将用户角色改为管理员，拒绝操作
+            if (UserRoleEnum.ADMIN.getValue().equals(userRole) &&
+                    !UserRoleEnum.ADMIN.getValue().equals(currentUser.getUserRole())) {
+                throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权将用户提升为管理员");
+            }
+
+            // 如果尝试将管理员降级，需要确保至少还有一个管理员
+            if (UserRoleEnum.ADMIN.getValue().equals(oldUser.getUserRole()) &&
+                    !UserRoleEnum.ADMIN.getValue().equals(userRole)) {
+                // 使用传入的管理员数量进行检查
+                ThrowUtils.throwIf(adminCount <= 1, ErrorCode.OPERATION_ERROR, "系统至少需要保留一个管理员");
+            }
+        }
+
+        // 校验密码
+        String userPassword = userUpdateRequest.getUserPassword();
+        if (StrUtil.isNotBlank(userPassword)) {
+            ThrowUtils.throwIf(userPassword.length() < 8, ErrorCode.PARAMS_ERROR, "密码长度不能小于8");
+        }
+    }
+
+    /**
+     * 验证用户删除参数
+     *
+     * @param userId      要删除的用户ID
+     * @param currentUser 当前操作的用户（用于权限检查）
+     * @param userToDelete 要删除的用户
+     */
+    private void validateUserDelete(Long userId, User currentUser, User userToDelete) {
+        ThrowUtils.throwIf(userId == null, ErrorCode.PARAMS_ERROR, "用户ID不能为空");
+        ThrowUtils.throwIf(userToDelete == null, ErrorCode.NOT_FOUND_ERROR, "用户不存在");
+
+        // 不允许删除管理员
+        ThrowUtils.throwIf(UserRoleEnum.ADMIN.getValue().equals(userToDelete.getUserRole()),
+                ErrorCode.NO_AUTH_ERROR, "不允许删除管理员");
+
+        // 不允许删除自己
+        ThrowUtils.throwIf(userId.equals(currentUser.getId()),
+                ErrorCode.NO_AUTH_ERROR, "不允许删除当前登录用户");
+    }
+
+    /**
+     * 验证用户个人资料更新参数
+     *
+     * @param profileUpdateRequest 个人资料更新请求
+     * @param currentUser          当前用户
+     * @param accountExists        账号是否已存在（用于检查账号是否可用）
+     */
+    private void validateProfileUpdate(UserProfileUpdateRequest profileUpdateRequest, User currentUser, boolean accountExists) {
+        ThrowUtils.throwIf(profileUpdateRequest == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
+
+        // 如果要更新账号，需要进行特殊处理
+        String userAccount = profileUpdateRequest.getUserAccount();
+        if (StrUtil.isNotBlank(userAccount)) {
+            // 账号长度校验
+            ThrowUtils.throwIf(userAccount.length() < 4, ErrorCode.PARAMS_ERROR, "用户账号长度不能小于4");
+
+            // 如果账号发生变化，需要检查新账号是否已存在
+            if (!userAccount.equals(currentUser.getUserAccount())) {
+                // 使用传入的账号存在状态进行检查
+                ThrowUtils.throwIf(accountExists, ErrorCode.PARAMS_ERROR, "账号已存在");
+            }
+        }
+    }
+
+    /**
+     * 验证用户密码更新参数
+     *
+     * @param passwordUpdateRequest 密码更新请求
+     */
+    private void validatePasswordUpdate(UserPasswordUpdateRequest passwordUpdateRequest) {
+        ThrowUtils.throwIf(passwordUpdateRequest == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
+
+        String oldPassword = passwordUpdateRequest.getOldPassword();
+        String newPassword = passwordUpdateRequest.getNewPassword();
+        String checkPassword = passwordUpdateRequest.getCheckPassword();
+
+        ThrowUtils.throwIf(StrUtil.hasBlank(oldPassword, newPassword, checkPassword),
+                ErrorCode.PARAMS_ERROR, "密码参数不能为空");
+
+        // 校验新密码长度
+        ThrowUtils.throwIf(newPassword.length() < 8, ErrorCode.PARAMS_ERROR, "新密码长度不能小于8");
+
+        // 校验两次输入的新密码是否一致
+        ThrowUtils.throwIf(!newPassword.equals(checkPassword), ErrorCode.PARAMS_ERROR, "两次输入的新密码不一致");
+    }
+
+    /**
+     * 验证用户角色是否合法
+     *
+     * @param userRole    用户角色
+     * @param currentUser 当前操作的用户（用于权限检查）
+     * @return 是否合法
+     */
+    private boolean validateUserRole(String userRole, User currentUser) {
+        if (StrUtil.isBlank(userRole)) {
+            return true;
+        }
+
+        UserRoleEnum roleEnum = UserRoleEnum.getEnumByValue(userRole);
+        ThrowUtils.throwIf(roleEnum == null, ErrorCode.PARAMS_ERROR, "用户角色不合法");
+
+        // 如果非管理员尝试创建管理员账号，拒绝操作
+        if (UserRoleEnum.ADMIN.getValue().equals(userRole) &&
+                !UserRoleEnum.ADMIN.getValue().equals(currentUser.getUserRole())) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权创建管理员账号");
+        }
+
+        return true;
+    }
+
+    /**
      * 物理删除用户
      * 完全从数据库中删除用户记录，而不是逻辑删除
      *
@@ -539,5 +722,295 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             log.error("物理删除用户异常: {}, 错误: {}", id, e.getMessage());
             return false;
         }
+    }
+
+    /**
+     * 更新用户个人资料
+     * 允许用户更新自己的个人资料，包括账号、用户名、头像和简介
+     *
+     * @param profileUpdateRequest 个人资料更新请求
+     * @param request HTTP请求对象
+     * @return 更新后的用户视图对象
+     */
+    @Override
+    public UserVO updateUserProfile(UserProfileUpdateRequest profileUpdateRequest, HttpServletRequest request) {
+        // 获取当前登录用户
+        User loginUser = getLoginUser(request);
+
+        // 检查账号是否已存在
+        boolean accountExists = false;
+        String userAccount = profileUpdateRequest.getUserAccount();
+        if (StrUtil.isNotBlank(userAccount) && !userAccount.equals(loginUser.getUserAccount())) {
+            QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+            queryWrapper.eq("userAccount", userAccount);
+            queryWrapper.eq("isDelete", 0); // 只检查未被逻辑删除的账号
+            accountExists = this.count(queryWrapper) > 0;
+        }
+
+        // 验证参数
+        validateProfileUpdate(profileUpdateRequest, loginUser, accountExists);
+
+        // 创建新的用户对象并设置ID
+        User user = new User();
+        user.setId(loginUser.getId());
+
+        // 如果要更新账号，需要进行特殊处理
+        if (StrUtil.isNotBlank(userAccount) && !userAccount.equals(loginUser.getUserAccount())) {
+            // 设置新账号
+            user.setUserAccount(userAccount);
+        }
+
+        // 设置要更新的字段
+        if (StrUtil.isNotBlank(profileUpdateRequest.getUserName())) {
+            user.setUserName(profileUpdateRequest.getUserName());
+        }
+
+        if (StrUtil.isNotBlank(profileUpdateRequest.getUserAvatar())) {
+            user.setUserAvatar(profileUpdateRequest.getUserAvatar());
+        }
+
+        if (StrUtil.isNotBlank(profileUpdateRequest.getUserProfile())) {
+            user.setUserProfile(profileUpdateRequest.getUserProfile());
+        }
+
+        // 设置编辑时间
+        user.setEditTime(new Date());
+
+        // 更新用户信息
+        boolean result = this.updateById(user);
+        ThrowUtils.throwIf(!result, ErrorCode.SYSTEM_ERROR, "更新失败");
+
+        // 获取更新后的用户信息
+        User updatedUser = this.getById(loginUser.getId());
+        UserVO userVO = toUserVO(updatedUser);
+
+        // 更新会话中的用户信息
+        request.getSession().setAttribute(UserConstant.USER_LOGIN_STATE, userVO);
+
+        return userVO;
+    }
+
+    /**
+     * 管理员更新用户信息
+     *
+     * @param userUpdateRequest 用户更新请求
+     * @param request HTTP请求对象
+     * @return 是否更新成功
+     */
+    @Override
+    public boolean adminUpdateUser(UserUpdateRequest userUpdateRequest, HttpServletRequest request) {
+        // 获取当前登录用户
+        User loginUser = getLoginUser(request);
+
+        // 判断是否存在
+        long id = userUpdateRequest.getId();
+        User oldUser = this.getById(id);
+        ThrowUtils.throwIf(oldUser == null, ErrorCode.NOT_FOUND_ERROR, "用户不存在");
+
+        // 查询管理员数量（用于检查是否可以降级管理员）
+        long adminCount = 0;
+        String userRole = userUpdateRequest.getUserRole();
+        if (StrUtil.isNotBlank(userRole) &&
+                UserRoleEnum.ADMIN.getValue().equals(oldUser.getUserRole()) &&
+                !UserRoleEnum.ADMIN.getValue().equals(userRole)) {
+            QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+            queryWrapper.eq("userRole", UserRoleEnum.ADMIN.getValue());
+            adminCount = this.count(queryWrapper);
+        }
+
+        // 验证参数
+        validateUserUpdate(userUpdateRequest, loginUser, oldUser, adminCount);
+
+        // 创建新的用户对象并复制属性
+        User user = new User();
+        BeanUtil.copyProperties(userUpdateRequest, user);
+
+        // 设置编辑时间
+        user.setEditTime(new Date());
+
+        // 如果提供了新密码，需要对密码进行加密
+        String userPassword = userUpdateRequest.getUserPassword();
+        if (StrUtil.isNotBlank(userPassword)) {
+            // 调用服务层的方法对密码进行加密
+            user.setUserPassword(encryptPassword(userPassword));
+        } else {
+            // 如果没有提供密码，不更新密码字段
+            user.setUserPassword(null);
+        }
+
+        boolean result = this.updateById(user);
+        ThrowUtils.throwIf(!result, ErrorCode.SYSTEM_ERROR, "更新失败");
+        return true;
+    }
+
+    /**
+     * 验证并创建新用户
+     *
+     * @param userCreateRequest 用户创建请求
+     * @param request HTTP请求对象
+     * @return 新用户ID
+     */
+    @Override
+    public Long createUserByAdmin(UserCreateRequest userCreateRequest, HttpServletRequest request) {
+        // 获取当前登录用户
+        User loginUser = getLoginUser(request);
+
+        // 验证参数
+        validateUserCreate(userCreateRequest, loginUser);
+
+        String userAccount = userCreateRequest.getUserAccount();
+        String userPassword = userCreateRequest.getUserPassword();
+        String checkPassword = userCreateRequest.getCheckPassword();
+        String userName = userCreateRequest.getUserName();
+        String userRole = userCreateRequest.getUserRole();
+
+        // 调用注册方法创建用户
+        long userId = userRegister(userAccount, userPassword, checkPassword);
+
+        // 创建用户后直接更新附加信息，避免二次查询
+        User user = new User();
+        user.setId(userId);
+
+        // 设置用户名，如果未提供则使用默认值
+        if (StrUtil.isNotBlank(userName)) {
+            user.setUserName(userName);
+        }
+
+        // 设置用户角色，如果未提供则使用默认值
+        if (StrUtil.isNotBlank(userRole)) {
+            user.setUserRole(userRole);
+        }
+
+        // 设置用户头像
+        if (StrUtil.isNotBlank(userCreateRequest.getUserAvatar())) {
+            user.setUserAvatar(userCreateRequest.getUserAvatar());
+        }
+
+        // 设置用户简介
+        if (StrUtil.isNotBlank(userCreateRequest.getUserProfile())) {
+            user.setUserProfile(userCreateRequest.getUserProfile());
+        }
+
+        // 设置编辑时间
+        user.setEditTime(new Date());
+
+        // 更新用户信息
+        boolean updateResult = this.updateById(user);
+        ThrowUtils.throwIf(!updateResult, ErrorCode.SYSTEM_ERROR, "用户信息更新失败");
+
+        return userId;
+    }
+
+    /**
+     * 更新用户密码
+     *
+     * @param passwordUpdateRequest 密码更新请求
+     * @param request HTTP请求对象
+     * @return 是否更新成功
+     */
+    @Override
+    public boolean updateUserPassword(UserPasswordUpdateRequest passwordUpdateRequest, HttpServletRequest request) {
+        // 验证参数
+        validatePasswordUpdate(passwordUpdateRequest);
+
+        String oldPassword = passwordUpdateRequest.getOldPassword();
+        String newPassword = passwordUpdateRequest.getNewPassword();
+
+        // 获取当前登录用户
+        User loginUser = getLoginUser(request);
+
+        // 验证旧密码是否正确
+        // 获取加密后的旧密码
+        String encryptedOldPassword = encryptPassword(oldPassword);
+
+        // 比较加密后的旧密码与数据库中的密码是否一致
+        ThrowUtils.throwIf(!encryptedOldPassword.equals(loginUser.getUserPassword()),
+                ErrorCode.PARAMS_ERROR, "旧密码不正确");
+
+        // 加密新密码
+        String encryptedNewPassword = encryptPassword(newPassword);
+
+        // 更新密码
+        User user = new User();
+        user.setId(loginUser.getId());
+        user.setUserPassword(encryptedNewPassword);
+        user.setEditTime(new Date());
+
+        boolean result = this.updateById(user);
+        ThrowUtils.throwIf(!result, ErrorCode.SYSTEM_ERROR, "密码更新失败");
+
+        return true;
+    }
+
+    /**
+     * 删除用户（管理员操作）
+     *
+     * @param deleteRequest 删除请求
+     * @param request HTTP请求对象
+     * @return 是否删除成功
+     */
+    @Override
+    public boolean deleteUser(DeleteRequest deleteRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(deleteRequest == null || deleteRequest.getId() == null,
+                ErrorCode.PARAMS_ERROR, "请求参数为空");
+
+        long id = deleteRequest.getId();
+        // 判断是否存在
+        User oldUser = this.getById(id);
+        ThrowUtils.throwIf(oldUser == null, ErrorCode.NOT_FOUND_ERROR, "用户不存在");
+
+        // 获取当前登录用户
+        User loginUser = getLoginUser(request);
+
+        // 验证删除操作
+        validateUserDelete(id, loginUser, oldUser);
+
+        // 执行删除操作
+        boolean result = this.removeById(id);
+        ThrowUtils.throwIf(!result, ErrorCode.SYSTEM_ERROR, "删除失败");
+
+        return true;
+    }
+
+    /**
+     * 获取所有用户信息（管理员操作）
+     *
+     * @return 所有用户信息列表
+     */
+    @Override
+    public List<UserVO> listAllUsers() {
+        // 创建查询条件
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("isDelete", 0);
+        queryWrapper.orderByDesc("createTime"); // 按创建时间降序排序
+
+        // 查询总数
+        long count = this.count(queryWrapper);
+
+        // 如果数据量过大，建议使用分页接口
+        if (count > 100) {
+            log.warn("用户数量过多，建议使用分页接口，当前用户数量: {}", count);
+
+            // 创建分页对象，设置每页最大数量为100
+            Page<User> page = new Page<>(1, 100);
+            // 不需要再次查询总数，使用新API
+            page.setSearchCount(false);
+
+            // 执行分页查询
+            Page<User> userPage = this.page(page, queryWrapper);
+
+            // 脱敏处理
+            return userPage.getRecords().stream()
+                    .map(this::toUserVO)
+                    .collect(Collectors.toList());
+        }
+
+        // 如果数据量不大，直接查询所有
+        List<User> userList = this.list(queryWrapper);
+
+        // 脱敏处理
+        return userList.stream()
+                .map(this::toUserVO)
+                .collect(Collectors.toList());
     }
 }

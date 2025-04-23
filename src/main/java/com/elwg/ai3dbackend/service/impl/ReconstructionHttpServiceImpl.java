@@ -50,7 +50,7 @@ public class ReconstructionHttpServiceImpl implements ReconstructionHttpService 
                 .readTimeout(readTimeout, TimeUnit.SECONDS)
                 .writeTimeout(writeTimeout, TimeUnit.SECONDS)
                 .build();
-        
+
         log.info("Initialized HTTP reconstruction service with server URL: {}", serverUrl);
     }
 
@@ -65,8 +65,19 @@ public class ReconstructionHttpServiceImpl implements ReconstructionHttpService 
      */
     @Override
     public CompletableFuture<String> sendImageForReconstruction(byte[] imageData, String taskId, String callbackUrl) throws IOException {
-        log.info("Sending image data for task: {}, size: {} bytes", taskId, imageData.length);
-        
+        log.info("Sending image data for task: {}, size: {} bytes, callback URL: {}", taskId, imageData.length, callbackUrl);
+
+        // 检查参数
+        if (imageData == null || imageData.length == 0) {
+            throw new IOException("Image data is empty");
+        }
+        if (taskId == null || taskId.isEmpty()) {
+            throw new IOException("Task ID is empty");
+        }
+        if (callbackUrl == null || callbackUrl.isEmpty()) {
+            throw new IOException("Callback URL is empty");
+        }
+
         // 创建请求体
         RequestBody requestBody = new MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
@@ -75,21 +86,28 @@ public class ReconstructionHttpServiceImpl implements ReconstructionHttpService 
                 .addFormDataPart("image", "image.jpg",
                         RequestBody.create(MediaType.parse("image/jpeg"), imageData))
                 .build();
-        
+
         // 创建请求
         Request request = new Request.Builder()
                 .url(serverUrl)
                 .post(requestBody)
                 .build();
-        
+
         // 创建CompletableFuture
         CompletableFuture<String> future = new CompletableFuture<>();
-        
+
         // 异步发送请求
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
-                log.error("Failed to send image data for task: {}", taskId, e);
+                log.error("Failed to send image data for task: {}, error: {}", taskId, e.getMessage(), e);
+                // 添加重试逻辑
+                if (call.request().url().toString().equals(serverUrl)) {
+                    log.warn("Connection to Python service failed, checking service health...");
+                    if (!checkServiceHealth()) {
+                        log.error("Python service is not healthy, please check the service status");
+                    }
+                }
                 future.completeExceptionally(e);
             }
 
@@ -98,42 +116,48 @@ public class ReconstructionHttpServiceImpl implements ReconstructionHttpService 
                 try (ResponseBody responseBody = response.body()) {
                     if (!response.isSuccessful()) {
                         String errorMessage = responseBody != null ? responseBody.string() : "Unknown error";
-                        log.error("Server returned error for task: {}, code: {}, message: {}", 
+                        log.error("Server returned error for task: {}, code: {}, message: {}",
                                 taskId, response.code(), errorMessage);
                         future.completeExceptionally(new IOException("Server returned error: " + response.code() + " " + errorMessage));
                         return;
                     }
-                    
+
                     if (responseBody == null) {
                         log.error("Server returned empty response for task: {}", taskId);
                         future.completeExceptionally(new IOException("Server returned empty response"));
                         return;
                     }
-                    
+
                     String responseString = responseBody.string();
                     log.info("Received response for task: {}: {}", taskId, responseString);
-                    
+
                     // 解析响应
                     try {
                         @SuppressWarnings("unchecked")
                         java.util.Map<String, Object> responseMap = objectMapper.readValue(responseString, java.util.Map.class);
                         String status = (String) responseMap.get("status");
-                        
+
                         if ("accepted".equals(status)) {
                             log.info("Task accepted by server: {}", taskId);
                             future.complete("accepted");
-                        } else {
+                        } else if (status != null) {
                             log.warn("Server returned unexpected status for task: {}: {}", taskId, status);
                             future.complete(status);
+                        } else {
+                            log.error("Server returned response without status field for task: {}", taskId);
+                            future.completeExceptionally(new IOException("Server returned response without status field: " + responseString));
                         }
                     } catch (Exception e) {
-                        log.error("Failed to parse server response for task: {}", taskId, e);
-                        future.completeExceptionally(e);
+                        log.error("Failed to parse server response for task: {}, response: {}", taskId, responseString, e);
+                        future.completeExceptionally(new IOException("Failed to parse server response: " + e.getMessage() + ", response: " + responseString));
                     }
+                } catch (Exception e) {
+                    log.error("Unexpected error processing response for task: {}", taskId, e);
+                    future.completeExceptionally(e);
                 }
             }
         });
-        
+
         return future;
     }
 
@@ -144,17 +168,21 @@ public class ReconstructionHttpServiceImpl implements ReconstructionHttpService 
      */
     @Override
     public boolean checkServiceHealth() {
+        log.info("Checking Python service health at: {}", healthUrl);
         try {
             Request request = new Request.Builder()
                     .url(healthUrl)
                     .get()
                     .build();
-            
+
             try (Response response = client.newCall(request).execute()) {
-                return response.isSuccessful();
+                boolean isHealthy = response.isSuccessful();
+                log.info("Python service health check result: {}, status code: {}",
+                        isHealthy ? "healthy" : "unhealthy", response.code());
+                return isHealthy;
             }
         } catch (Exception e) {
-            log.error("Failed to check service health", e);
+            log.error("Failed to check service health: {}", e.getMessage(), e);
             return false;
         }
     }

@@ -1,0 +1,23 @@
+{
+  "name": "python-3d-service-test",
+  "version": "1.0.0",
+  "description": "测试Python 3D重建服务的工具",
+  "main": "python-service-test-server-ip.js",
+  "scripts": {
+    "start": "node python-service-test-server-ip.js",
+    "start:original": "node python-service-test-server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "3d",
+    "reconstruction",
+    "test"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.1"
+  }
+}

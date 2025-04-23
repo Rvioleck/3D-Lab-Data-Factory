@@ -20,8 +20,8 @@ public class ReconstructionTaskDTO {
     /**
      * 任务ID
      */
-    @ApiModelProperty(value = "任务ID", example = "1234567890abcdef1234567890abcdef")
-    private String taskId;
+    @ApiModelProperty(value = "任务ID", example = "1")
+    private Long id;
 
     /**
      * 任务状态
@@ -38,25 +38,25 @@ public class ReconstructionTaskDTO {
     /**
      * 原始图片URL
      */
-    @ApiModelProperty(value = "原始图片URL", example = "https://example.com/images/1234567890abcdef1234567890abcdef/image.jpg")
+    @ApiModelProperty(value = "原始图片URL", example = "https://example.com/images/1/image.jpg")
     private String originalImageUrl;
 
     /**
      * 像素图像URL
      */
-    @ApiModelProperty(value = "像素图像URL", example = "https://example.com/reconstruction/1234567890abcdef1234567890abcdef/pixel_images.png")
+    @ApiModelProperty(value = "像素图像URL", example = "https://example.com/reconstruction/1/pixel_images.png")
     private String pixelImagesUrl;
 
     /**
      * XYZ图像URL
      */
-    @ApiModelProperty(value = "XYZ图像URL", example = "https://example.com/reconstruction/1234567890abcdef1234567890abcdef/xyz_images.png")
+    @ApiModelProperty(value = "XYZ图像URL", example = "https://example.com/reconstruction/1/xyz_images.png")
     private String xyzImagesUrl;
 
     /**
      * 输出ZIP包URL
      */
-    @ApiModelProperty(value = "输出ZIP包URL", example = "https://example.com/reconstruction/1234567890abcdef1234567890abcdef/output3d.zip")
+    @ApiModelProperty(value = "输出ZIP包URL", example = "https://example.com/reconstruction/1/output3d.zip")
     private String outputZipUrl;
 
     /**

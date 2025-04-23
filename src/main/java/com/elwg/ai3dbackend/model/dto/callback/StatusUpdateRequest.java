@@ -22,7 +22,7 @@ public class StatusUpdateRequest {
      * 任务ID
      */
     @ApiModelProperty(value = "任务ID", required = true)
-    private String taskId;
+    private Long taskId;
 
     /**
      * 状态

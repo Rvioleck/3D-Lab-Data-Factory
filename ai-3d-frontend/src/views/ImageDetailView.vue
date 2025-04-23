@@ -82,7 +82,8 @@
                 </li>
                 <li class="list-group-item d-flex justify-content-between">
                   <span>3D模型状态</span>
-                  <span v-if="image.hasModel" class="badge bg-success">已创建</span>
+                  <span v-if="loadingModel" class="badge bg-warning">加载中...</span>
+                  <span v-else-if="hasModel" class="badge bg-success">已创建</span>
                   <span v-else class="badge bg-secondary">未创建</span>
                 </li>
               </ul>
@@ -91,19 +92,43 @@
 
           <!-- 3D模型操作卡片 -->
           <div class="card mb-4">
-            <div class="card-header">
-              <h5 class="mb-0">3D模型</h5>
+            <div class="card-header bg-primary text-white">
+              <h5 class="mb-0">
+                <i class="bi bi-box me-2"></i>
+                3D模型
+              </h5>
             </div>
             <div class="card-body">
-              <div v-if="image.hasModel" class="text-center">
-                <p class="text-success mb-3">
-                  <i class="bi bi-check-circle me-2"></i>
-                  该图片已创建3D模型
-                </p>
+              <!-- 加载中 -->
+              <div v-if="loadingModel" class="text-center py-3">
+                <div class="spinner-border text-primary" role="status">
+                  <span class="visually-hidden">加载中...</span>
+                </div>
+                <p class="mt-2">正在加载模型信息...</p>
+              </div>
+
+              <!-- 有关联模型 -->
+              <div v-else-if="hasModel" class="text-center">
+                <div class="model-info mb-3">
+                  <h6 class="mb-2">{{ relatedModel.name || '未命名模型' }}</h6>
+                  <p v-if="relatedModel.introduction" class="text-muted small mb-2">
+                    {{ relatedModel.introduction }}
+                  </p>
+                  <div class="d-flex justify-content-center gap-2 mb-2">
+                    <span v-if="relatedModel.category" class="badge bg-secondary">{{ relatedModel.category }}</span>
+                    <span v-if="relatedModel.modelFormat" class="badge bg-info">{{ relatedModel.modelFormat }}</span>
+                    <span class="badge bg-success">已完成</span>
+                  </div>
+                  <p class="text-muted small">
+                    创建于: {{ formatDate(relatedModel.createTime) }}
+                  </p>
+                </div>
                 <button class="btn btn-primary w-100" @click="viewModel">
                   <i class="bi bi-box me-2"></i> 查看3D模型
                 </button>
               </div>
+
+              <!-- 无关联模型 -->
               <div v-else class="text-center">
                 <p class="text-muted mb-3">
                   <i class="bi bi-info-circle me-2"></i>
@@ -149,11 +174,13 @@ import { ref, computed, onMounted } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter, useRoute } from 'vue-router'
 import { Modal } from 'bootstrap'
+import { cleanupModals } from '@/utils/modalFix'
 import {
   getPictureById,
   updatePicture,
   deletePicture
 } from '@/api/picture'
+import { getModelByImageId } from '@/api/model'
 
 export default {
   name: 'ImageDetailView',
@@ -167,10 +194,14 @@ export default {
     const loading = ref(true)
     const image = ref(null)
     const deleteConfirmModal = ref(null)
+    const relatedModel = ref(null)
+    const loadingModel = ref(false)
 
     // 获取图片ID
     const imageId = route.params.id
 
+    // 计算属性
+    const hasModel = computed(() => !!relatedModel.value)
 
 
     // 加载图片详情
@@ -195,6 +226,32 @@ export default {
         image.value = null
       } finally {
         loading.value = false
+
+        // 加载关联模型
+        loadRelatedModel()
+      }
+    }
+
+    // 加载关联模型
+    const loadRelatedModel = async () => {
+      if (!imageId) return
+
+      loadingModel.value = true
+      try {
+        const response = await getModelByImageId(imageId)
+
+        if (response.code === 0) {
+          relatedModel.value = response.data
+          console.log('关联模型:', relatedModel.value)
+        } else {
+          console.log('没有找到关联模型:', response.message)
+          relatedModel.value = null
+        }
+      } catch (error) {
+        console.error('加载关联模型失败:', error)
+        relatedModel.value = null
+      } finally {
+        loadingModel.value = false
       }
     }
 
@@ -213,21 +270,29 @@ export default {
 
     // 查看3D模型
     const viewModel = () => {
-      if (image.value && image.value.modelId) {
-        router.push(`/models/${image.value.modelId}`)
+      if (relatedModel.value && relatedModel.value.id) {
+        router.push(`/models/${relatedModel.value.id}`)
       }
     }
 
     // 创建3D模型
     const createModel = () => {
-      router.push(`/reconstruction/${imageId}`)
+      router.push({
+        path: '/reconstruction',
+        query: {
+          imageId: imageId,
+          autoCreate: 'true'
+        }
+      })
     }
 
     // 确认删除图片
     const confirmDeleteImage = () => {
-      if (!deleteConfirmModal.value) {
-        deleteConfirmModal.value = new Modal(document.getElementById('deleteConfirmModal'))
-      }
+      // 显示模态框，禁用背景遮罩
+      deleteConfirmModal.value = new Modal(document.getElementById('deleteConfirmModal'), {
+        backdrop: false,
+        keyboard: true
+      })
       deleteConfirmModal.value.show()
     }
 
@@ -242,6 +307,8 @@ export default {
           // 关闭模态框
           if (deleteConfirmModal.value) {
             deleteConfirmModal.value.hide()
+            // 清除模态框背景
+            setTimeout(cleanupModals, 100)
           }
 
           // 显示成功消息
@@ -277,12 +344,18 @@ export default {
     // 生命周期钩子
     onMounted(() => {
       loadImageDetail()
+
+      // 初始化时清除模态框背景
+      cleanupModals()
     })
 
     return {
       loading,
+      loadingModel,
       image,
+      relatedModel,
       isAdmin,
+      hasModel,
 
       downloadImage,
       viewModel,

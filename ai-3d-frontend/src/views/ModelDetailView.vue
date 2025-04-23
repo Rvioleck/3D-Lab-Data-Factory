@@ -42,7 +42,7 @@
           <div class="d-flex justify-content-between align-items-center">
             <h2>{{ model.name || '未命名模型' }}</h2>
             <div>
-              <button class="btn btn-outline-primary me-2" @click="downloadModel" :disabled="model.status !== 'completed'">
+              <button class="btn btn-outline-primary me-2" @click="downloadModel" :disabled="model.status !== 'COMPLETED' && model.status !== 'completed'">
                 <i class="bi bi-download me-1"></i> 下载模型
               </button>
               <button class="btn btn-outline-danger" @click="confirmDeleteModel" v-if="isAdmin">
@@ -51,8 +51,14 @@
             </div>
           </div>
           <div class="model-status mt-2">
-            <span class="badge" :class="model.status === 'completed' ? 'bg-success' : 'bg-primary'">
-              {{ model.status === 'completed' ? '已完成' : '处理中' }}
+            <span class="badge" :class="{
+              'bg-success': model.status === 'COMPLETED' || model.status === 'completed',
+              'bg-primary': model.status === 'PROCESSING' || model.status === 'processing',
+              'bg-warning': model.status === 'PENDING' || model.status === 'pending',
+              'bg-danger': model.status === 'FAILED' || model.status === 'failed',
+              'bg-secondary': !model.status
+            }">
+              {{ getStatusText(model.status) }}
             </span>
             <span class="text-muted ms-2">创建于 {{ formatDate(model.createTime) }}</span>
           </div>
@@ -65,11 +71,11 @@
               <h5 class="mb-0"><i class="bi bi-cube me-2"></i>3D模型预览</h5>
             </div>
             <div class="card-body p-0">
-              <div v-if="model.status === 'completed'" class="model-viewer-container">
+              <div v-if="model.status === 'COMPLETED' || model.status === 'completed'" class="model-viewer-container">
                 <ModelViewer
-                  :objUrl="model.objUrl"
-                  :mtlUrl="model.mtlUrl"
-                  :textureUrl="model.textureUrl"
+                  :obj-url="modelUrls.objUrl"
+                  :mtl-url="modelUrls.mtlUrl"
+                  :texture-url="modelUrls.textureUrl"
                 />
               </div>
               <div v-else class="model-processing-placeholder">
@@ -82,7 +88,7 @@
                 </div>
               </div>
             </div>
-            <div class="card-footer bg-light" v-if="model.status === 'completed'">
+            <div class="card-footer bg-light" v-if="model.status === 'COMPLETED' || model.status === 'completed'">
               <div class="small text-muted">
                 <i class="bi bi-mouse me-2"></i>拖动鼠标旋转模型 | 滚轮缩放 | 右键平移
               </div>
@@ -139,22 +145,25 @@
           </div>
 
           <!-- 下载文件卡片 -->
-          <div class="card mb-4" v-if="model.status === 'completed'">
-            <div class="card-header">
-              <h5 class="mb-0">下载文件</h5>
+          <div class="card mb-4" v-if="model.status === 'COMPLETED' || model.status === 'completed'">
+            <div class="card-header bg-info text-white">
+              <h5 class="mb-0">
+                <i class="bi bi-download me-2"></i>
+                下载文件
+              </h5>
             </div>
             <div class="card-body">
               <div class="d-grid gap-2">
                 <a :href="model.outputZipUrl" class="btn btn-primary" download>
                   <i class="bi bi-file-earmark-zip me-1"></i> 下载完整ZIP包
                 </a>
-                <a :href="model.objUrl" class="btn btn-outline-primary" download>
+                <a :href="modelUrls.objUrl" class="btn btn-outline-primary" download>
                   <i class="bi bi-box me-1"></i> OBJ模型
                 </a>
-                <a :href="model.mtlUrl" class="btn btn-outline-primary" download>
+                <a :href="modelUrls.mtlUrl" class="btn btn-outline-primary" download>
                   <i class="bi bi-palette me-1"></i> MTL材质
                 </a>
-                <a :href="model.textureUrl" class="btn btn-outline-primary" download>
+                <a :href="modelUrls.textureUrl" class="btn btn-outline-primary" download>
                   <i class="bi bi-image me-1"></i> 纹理图像
                 </a>
               </div>
@@ -167,10 +176,13 @@
         </div>
 
         <!-- 纹理和深度图像 -->
-        <div class="col-12 mb-4" v-if="model.status === 'completed'">
+        <div class="col-12 mb-4" v-if="model.status === 'COMPLETED' || model.status === 'completed'">
           <div class="card">
-            <div class="card-header">
-              <h5 class="mb-0">生成的图像</h5>
+            <div class="card-header bg-success text-white">
+              <h5 class="mb-0">
+                <i class="bi bi-file-earmark-image me-2"></i>
+                生成的图像
+              </h5>
             </div>
             <div class="card-body">
               <div class="row">
@@ -230,7 +242,10 @@ import { ref, computed, onMounted } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter, useRoute } from 'vue-router'
 import { Modal } from 'bootstrap'
+import { cleanupModals } from '@/utils/modalFix'
 import ModelViewer from '@/components/ModelViewer.vue'
+import { getModelById, deleteModel as apiDeleteModel } from '@/api/model'
+import { getResultFileUrl } from '@/api/reconstruction'
 import axios from 'axios'
 
 // API URL
@@ -246,169 +261,162 @@ export default {
     const router = useRouter()
     const route = useRoute()
     const isAdmin = computed(() => store.getters['user/isAdmin'])
-    
+
     // 状态变量
     const loading = ref(true)
     const model = ref(null)
     const deleteConfirmModal = ref(null)
-    
+
     // 获取模型ID
     const modelId = route.params.id
-    
-    // 模拟模型数据 - 实际应用中应该从API获取
-    const mockModels = [
-      {
-        id: 'm1',
-        name: '显微镜模型',
-        status: 'completed',
-        pixelImagesUrl: 'https://via.placeholder.com/800x600?text=显微镜纹理',
-        xyzImagesUrl: 'https://via.placeholder.com/800x600?text=显微镜深度',
-        objUrl: 'https://example.com/models/microscope.obj',
-        mtlUrl: 'https://example.com/models/microscope.mtl',
-        textureUrl: 'https://example.com/models/microscope.png',
-        outputZipUrl: 'https://example.com/models/microscope.zip',
-        sourceImageId: '1',
-        sourceImageUrl: 'https://via.placeholder.com/800x600?text=显微镜',
-        taskId: 'abc123def456',
-        createTime: '2023-04-16T14:20:00Z'
-      },
-      {
-        id: 'm2',
-        name: '试管架模型',
-        status: 'completed',
-        pixelImagesUrl: 'https://via.placeholder.com/800x600?text=试管架纹理',
-        xyzImagesUrl: 'https://via.placeholder.com/800x600?text=试管架深度',
-        objUrl: 'https://example.com/models/test-tube-rack.obj',
-        mtlUrl: 'https://example.com/models/test-tube-rack.mtl',
-        textureUrl: 'https://example.com/models/test-tube-rack.png',
-        outputZipUrl: 'https://example.com/models/test-tube-rack.zip',
-        sourceImageId: '2',
-        sourceImageUrl: 'https://via.placeholder.com/800x600?text=试管架',
-        taskId: 'def456ghi789',
-        createTime: '2023-04-17T09:15:00Z'
-      },
-      {
-        id: 'm3',
-        name: '培养皿模型',
-        status: 'processing',
-        pixelImagesUrl: null,
-        xyzImagesUrl: null,
-        objUrl: null,
-        mtlUrl: null,
-        textureUrl: null,
-        outputZipUrl: null,
-        sourceImageId: '3',
-        sourceImageUrl: 'https://via.placeholder.com/800x600?text=培养皿',
-        taskId: 'xyz789abc012',
-        createTime: '2023-04-18T11:45:00Z'
+
+    // 计算属性：模型URL
+    const modelUrls = computed(() => {
+      if (!model.value) return { objUrl: null, mtlUrl: null, textureUrl: null }
+
+      return {
+        // 使用后端返回的URL字段
+        objUrl: model.value.objFileUrl || null,
+        mtlUrl: model.value.mtlFileUrl || null,
+        textureUrl: model.value.textureImageUrl || model.value.pixelImagesUrl || null
       }
-    ]
-    
+    })
+
+    // 从API获取模型数据
+
     // 加载模型详情
     const loadModelDetail = async () => {
       loading.value = true
       try {
-        // 实际应用中应该调用API
-        // const response = await axios.get(`${API_URL}/api/models/${modelId}`, {
-        //   withCredentials: true
-        // })
-        // model.value = response.data
-        
-        // 模拟API响应
-        setTimeout(() => {
-          model.value = mockModels.find(m => m.id === modelId) || null
-          loading.value = false
-        }, 500)
+        // 调用API获取模型详情
+        const response = await getModelById(modelId)
+
+        if (response.code === 0 && response.data) {
+          model.value = response.data
+
+          // 确保模型有正确的URL
+          if (!model.value.sourceImageUrl && model.value.sourceImageId) {
+            // 如果需要，可以调用图片API获取源图片URL
+            model.value.sourceImageUrl = `${API_URL}/picture/${model.value.sourceImageId}`
+          }
+        } else {
+          console.error('获取模型失败:', response.message)
+          model.value = null
+        }
       } catch (error) {
         console.error('加载模型详情失败:', error)
+        model.value = null
+      } finally {
         loading.value = false
       }
     }
-    
+
     // 下载模型
     const downloadModel = () => {
       if (!model.value || model.value.status !== 'completed' || !model.value.outputZipUrl) {
         alert('模型还未完成生成，无法下载')
         return
       }
-      
+
       // 实际应用中应该使用正确的URL
       window.open(model.value.outputZipUrl, '_blank')
     }
-    
+
     // 查看源图片
     const viewSourceImage = () => {
       if (model.value && model.value.sourceImageId) {
         router.push(`/images/${model.value.sourceImageId}`)
       }
     }
-    
+
     // 确认删除模型
     const confirmDeleteModel = () => {
-      if (!deleteConfirmModal.value) {
-        deleteConfirmModal.value = new Modal(document.getElementById('deleteConfirmModal'))
-      }
+      // 显示模态框，禁用背景遮罩
+      deleteConfirmModal.value = new Modal(document.getElementById('deleteConfirmModal'), {
+        backdrop: false,
+        keyboard: true
+      })
       deleteConfirmModal.value.show()
     }
-    
+
     // 删除模型
     const deleteModel = async () => {
       try {
-        // 实际应用中应该调用API
-        // await axios.delete(`${API_URL}/api/models/${modelId}`, {
-        //   withCredentials: true
-        // })
-        
-        // 模拟删除成功
-        setTimeout(() => {
-          // 关闭模态框
-          if (deleteConfirmModal.value) {
-            deleteConfirmModal.value.hide()
-          }
-          
+        // 调用API删除模型
+        const response = await apiDeleteModel(modelId)
+
+        // 关闭模态框
+        if (deleteConfirmModal.value) {
+          deleteConfirmModal.value.hide()
+          // 清除模态框背景
+          setTimeout(cleanupModals, 100)
+        }
+
+        if (response.code === 0) {
           // 显示成功消息
           alert('模型删除成功！')
-          
           // 返回模型库
           router.push('/models')
-        }, 500)
+        } else {
+          alert('删除模型失败: ' + response.message)
+        }
       } catch (error) {
         console.error('删除模型失败:', error)
-        alert('删除模型失败: ' + (error.response?.data?.message || '未知错误'))
+        alert('删除模型失败: ' + (error.message || '未知错误'))
       }
     }
-    
+
     // 格式化日期
     const formatDate = (dateString) => {
       if (!dateString) return '未知时间'
-      
+
       const date = new Date(dateString)
-      const options = { 
-        year: 'numeric', 
-        month: 'short', 
+      const options = {
+        year: 'numeric',
+        month: 'short',
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit'
       }
-      
+
       return date.toLocaleDateString('zh-CN', options)
     }
-    
+
+    // 获取状态文本
+    const getStatusText = (status) => {
+      switch (status) {
+        case 'PENDING': return '等待中'
+        case 'PROCESSING': return '处理中'
+        case 'COMPLETED': return '已完成'
+        case 'FAILED': return '失败'
+        case 'completed': return '已完成' // 兼容旧数据
+        case 'processing': return '处理中' // 兼容旧数据
+        case 'pending': return '等待中' // 兼容旧数据
+        case 'failed': return '失败' // 兼容旧数据
+        default: return '未知'
+      }
+    }
+
     // 生命周期钩子
     onMounted(() => {
       loadModelDetail()
+
+      // 初始化时清除模态框背景
+      cleanupModals()
     })
-    
+
     return {
       loading,
       model,
       isAdmin,
-      
+      modelUrls,
+
       downloadModel,
       viewSourceImage,
       confirmDeleteModel,
       deleteModel,
-      formatDate
+      formatDate,
+      getStatusText
     }
   }
 }

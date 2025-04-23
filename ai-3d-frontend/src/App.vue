@@ -14,6 +14,9 @@
         </transition>
       </router-view>
     </div>
+
+    <!-- 模态框紧急修复按钮 -->
+    <ModalEmergencyFix />
   </div>
 </template>
 
@@ -22,11 +25,13 @@ import { computed, ref, onMounted, watch } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
 import NewNavbar from './components/NewNavbar.vue'
+import ModalEmergencyFix from './components/ModalEmergencyFix.vue'
 
 export default {
   name: 'App',
   components: {
-    NewNavbar
+    NewNavbar,
+    ModalEmergencyFix
   },
   setup() {
     const store = useStore()

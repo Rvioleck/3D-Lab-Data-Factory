@@ -22,61 +22,40 @@ public interface ReconstructionTaskService {
     ReconstructionTask createTask(Long userId, Long sourceImageId, String originalImageUrl);
 
     /**
-     * 创建重建任务（指定任务ID）
-     *
-     * @param taskId 任务ID
-     * @param userId 用户ID
-     * @param sourceImageId 源图片ID
-     * @param originalImageUrl 原始图片URL
-     * @return 创建的任务
-     */
-    ReconstructionTask createTask(String taskId, Long userId, Long sourceImageId, String originalImageUrl);
-
-    /**
      * 根据任务ID查询任务
      *
-     * @param taskId 任务ID
+     * @param id 任务ID
      * @return 任务实体，如果不存在则返回null
      */
-    ReconstructionTask getTaskByTaskId(String taskId);
+    ReconstructionTask getTaskById(Long id);
 
     /**
      * 更新任务状态
      *
-     * @param taskId 任务ID
+     * @param id 任务ID
      * @param status 新状态
      * @param errorMessage 错误信息（可选）
      * @return 更新后的任务
      */
-    ReconstructionTask updateTaskStatus(String taskId, String status, String errorMessage);
-
-    /**
-     * 更新任务结果文件URL
-     *
-     * @param taskId 任务ID
-     * @param fileType 文件类型（pixel_images, xyz_images, output_zip）
-     * @param fileUrl 文件URL
-     * @return 更新后的任务
-     */
-    ReconstructionTask updateTaskResultFile(String taskId, String fileType, String fileUrl);
+    ReconstructionTask updateTaskStatus(Long id, String status, String errorMessage);
 
     /**
      * 更新任务结果模型ID
      *
-     * @param taskId 任务ID
+     * @param id 任务ID
      * @param modelId 模型ID
      * @return 更新后的任务
      */
-    ReconstructionTask updateTaskResultModel(String taskId, Long modelId);
+    ReconstructionTask updateTaskResultModel(Long id, Long modelId);
 
     /**
      * 更新任务处理时间
      *
-     * @param taskId 任务ID
+     * @param id 任务ID
      * @param processingTime 处理时间（秒）
      * @return 更新后的任务
      */
-    ReconstructionTask updateTaskProcessingTime(String taskId, Integer processingTime);
+    ReconstructionTask updateTaskProcessingTime(Long id, Integer processingTime);
 
     /**
      * 分页查询用户的任务列表
@@ -92,8 +71,8 @@ public interface ReconstructionTaskService {
     /**
      * 删除任务
      *
-     * @param taskId 任务ID
+     * @param id 任务ID
      * @return 是否删除成功
      */
-    boolean deleteTask(String taskId);
+    boolean deleteTask(Long id);
 }

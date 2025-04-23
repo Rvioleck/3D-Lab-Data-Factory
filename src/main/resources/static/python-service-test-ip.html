@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python 3D重建服务测试 (IP版)</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .result-image {
+            max-width: 100%;
+            max-height: 300px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 5px;
+        }
+        .log-container {
+            height: 200px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: monospace;
+        }
+        .log-entry {
+            margin: 0;
+            padding: 2px 0;
+        }
+        .log-info {
+            color: #0d6efd;
+        }
+        .log-success {
+            color: #198754;
+        }
+        .log-error {
+            color: #dc3545;
+        }
+        .result-container {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">Python 3D重建服务测试 <span class="badge bg-warning">IP版</span></h1>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">配置</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="pythonServiceUrl" class="form-label">Python服务URL</label>
+                            <input type="text" class="form-control" id="pythonServiceUrl" value="http://10.0.0.2:8001/generate3d">
+                        </div>
+                        <div class="mb-3">
+                            <label for="callbackUrl" class="form-label">回调服务URL</label>
+                            <input type="text" class="form-control" id="callbackUrl" value="http://10.0.0.123:3000/callback">
+                            <div class="form-text text-danger">注意：使用内网IP而不是localhost，确保Python服务可以访问</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">上传图片</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="imageFile" class="form-label">选择图片</label>
+                            <input class="form-control" type="file" id="imageFile" accept="image/*">
+                        </div>
+                        <div class="mb-3">
+                            <img id="imagePreview" class="d-none result-image mb-3" alt="预览图">
+                        </div>
+                        <div class="d-grid">
+                            <button class="btn btn-primary" id="uploadButton" disabled>
+                                <span class="spinner-border spinner-border-sm d-none" id="uploadSpinner" role="status" aria-hidden="true"></span>
+                                发送到Python服务
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0">日志</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="log-container" id="logContainer"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">回调结果</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">任务ID</label>
+                            <input type="text" class="form-control" id="taskId" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">任务状态</label>
+                            <input type="text" class="form-control" id="taskStatus" readonly>
+                        </div>
+                        
+                        <div id="resultFiles" class="d-none result-container">
+                            <h5>结果文件</h5>
+                            <div class="mb-3">
+                                <label class="form-label">像素图像 (pixel_images.png)</label>
+                                <div>
+                                    <img id="pixelImage" class="result-image" alt="像素图像">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">深度图像 (xyz_images.png)</label>
+                                <div>
+                                    <img id="xyzImage" class="result-image" alt="深度图像">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">3D模型 (output3d.zip)</label>
+                                <div>
+                                    <a id="outputZipLink" class="btn btn-outline-primary" download>
+                                        <i class="bi bi-download"></i> 下载ZIP包
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let currentTaskId = null;
+        let eventSource = null;
+        let resultFiles = {
+            pixelImages: null,
+            xyzImages: null,
+            outputZip: null
+        };
+
+        // DOM元素
+        const imageFileInput = document.getElementById('imageFile');
+        const imagePreview = document.getElementById('imagePreview');
+        const uploadButton = document.getElementById('uploadButton');
+        const uploadSpinner = document.getElementById('uploadSpinner');
+        const logContainer = document.getElementById('logContainer');
+        const taskIdInput = document.getElementById('taskId');
+        const taskStatusInput = document.getElementById('taskStatus');
+        const resultFilesContainer = document.getElementById('resultFiles');
+        const pixelImage = document.getElementById('pixelImage');
+        const xyzImage = document.getElementById('xyzImage');
+        const outputZipLink = document.getElementById('outputZipLink');
+        const pythonServiceUrlInput = document.getElementById('pythonServiceUrl');
+        const callbackUrlInput = document.getElementById('callbackUrl');
+
+        // 初始化
+        function init() {
+            // 图片选择事件
+            imageFileInput.addEventListener('change', handleImageSelect);
+            
+            // 上传按钮事件
+            uploadButton.addEventListener('click', sendToPythonService);
+
+            // 连接到SSE服务
+            connectToSSE();
+
+            // 添加初始日志
+            addLog('测试页面已加载，等待操作...', 'info');
+            addLog('请选择一张图片并点击"发送到Python服务"按钮', 'info');
+            addLog('注意: 使用内网IP (10.0.0.123) 而不是 localhost', 'info');
+        }
+
+        // 处理图片选择
+        function handleImageSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                // 预览图片
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;
+                    imagePreview.classList.remove('d-none');
+                    uploadButton.disabled = false;
+                    addLog(`已选择图片: ${file.name} (${formatFileSize(file.size)})`, 'info');
+                };
+                reader.readAsDataURL(file);
+            } else {
+                imagePreview.classList.add('d-none');
+                uploadButton.disabled = true;
+            }
+        }
+
+        // 发送到Python服务
+        async function sendToPythonService() {
+            const file = imageFileInput.files[0];
+            if (!file) {
+                addLog('请先选择图片', 'error');
+                return;
+            }
+
+            // 获取配置
+            const pythonServiceUrl = pythonServiceUrlInput.value.trim();
+            const callbackUrl = callbackUrlInput.value.trim();
+
+            if (!pythonServiceUrl || !callbackUrl) {
+                addLog('请填写Python服务URL和回调服务URL', 'error');
+                return;
+            }
+
+            // 生成任务ID
+            currentTaskId = generateTaskId();
+            taskIdInput.value = currentTaskId;
+            taskStatusInput.value = 'PENDING';
+
+            // 更新UI
+            uploadButton.disabled = true;
+            uploadSpinner.classList.remove('d-none');
+            addLog(`开始发送图片到Python服务，任务ID: ${currentTaskId}`, 'info');
+
+            try {
+                // 创建FormData
+                const formData = new FormData();
+                formData.append('task_id', currentTaskId);
+                formData.append('callback_url', callbackUrl);
+                formData.append('image', file);
+
+                // 发送请求
+                addLog(`正在发送请求到: ${pythonServiceUrl}`, 'info');
+                addLog(`回调URL设置为: ${callbackUrl}`, 'info');
+                
+                const response = await fetch(pythonServiceUrl, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP错误: ${response.status} ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                addLog(`Python服务响应: ${JSON.stringify(data)}`, 'success');
+                
+                if (data.status === 'accepted') {
+                    taskStatusInput.value = 'PROCESSING';
+                    addLog('任务已被接受，等待处理...', 'success');
+                } else {
+                    addLog(`任务状态异常: ${data.status}`, 'error');
+                }
+            } catch (error) {
+                addLog(`发送请求失败: ${error.message}`, 'error');
+                taskStatusInput.value = 'FAILED';
+            } finally {
+                // 恢复UI
+                uploadButton.disabled = false;
+                uploadSpinner.classList.add('d-none');
+            }
+        }
+
+        // 连接到SSE服务
+        function connectToSSE() {
+            // 使用内网IP而不是localhost
+            const sseUrl = 'http://10.0.0.123:3000/events';
+            
+            addLog(`尝试连接到SSE服务: ${sseUrl}`, 'info');
+            
+            try {
+                eventSource = new EventSource(sseUrl);
+                
+                eventSource.onopen = function() {
+                    addLog('SSE连接已建立', 'success');
+                };
+                
+                eventSource.onerror = function(error) {
+                    addLog('SSE连接错误，可能是服务器未启动', 'error');
+                    console.error('SSE连接错误:', error);
+                };
+                
+                // 监听结果事件
+                eventSource.addEventListener('result', function(event) {
+                    const data = JSON.parse(event.data);
+                    handleResultEvent(data);
+                });
+                
+                // 监听状态事件
+                eventSource.addEventListener('status', function(event) {
+                    const data = JSON.parse(event.data);
+                    handleStatusEvent(data);
+                });
+                
+                // 监听消息事件
+                eventSource.onmessage = function(event) {
+                    addLog(`收到未处理的SSE消息: ${event.data}`, 'info');
+                };
+            } catch (error) {
+                addLog(`SSE连接失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 处理结果事件
+        function handleResultEvent(data) {
+            addLog(`收到结果事件: ${JSON.stringify(data)}`, 'success');
+            
+            if (data.taskId !== currentTaskId) {
+                addLog(`收到其他任务的结果: ${data.taskId}`, 'info');
+                return;
+            }
+            
+            // 显示结果文件
+            resultFilesContainer.classList.remove('d-none');
+            
+            // 根据文件类型更新UI
+            if (data.name.includes('pixel_images')) {
+                pixelImage.src = data.url;
+                resultFiles.pixelImages = data.url;
+                addLog('收到像素图像', 'success');
+            } else if (data.name.includes('xyz_images')) {
+                xyzImage.src = data.url;
+                resultFiles.xyzImages = data.url;
+                addLog('收到深度图像', 'success');
+            } else if (data.name.includes('output3d')) {
+                outputZipLink.href = data.url;
+                resultFiles.outputZip = data.url;
+                addLog('收到3D模型ZIP包', 'success');
+            }
+        }
+
+        // 处理状态事件
+        function handleStatusEvent(data) {
+            addLog(`收到状态事件: ${JSON.stringify(data)}`, 'info');
+            
+            if (data.taskId !== currentTaskId) {
+                addLog(`收到其他任务的状态: ${data.taskId}`, 'info');
+                return;
+            }
+            
+            // 更新任务状态
+            taskStatusInput.value = data.status;
+            
+            if (data.status === 'COMPLETED') {
+                addLog('任务已完成', 'success');
+            } else if (data.status === 'FAILED') {
+                addLog(`任务失败: ${data.error || '未知错误'}`, 'error');
+            }
+        }
+
+        // 添加日志
+        function addLog(message, type = 'info') {
+            const logEntry = document.createElement('p');
+            logEntry.className = `log-entry log-${type}`;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        // 生成任务ID
+        function generateTaskId() {
+            return 'test-' + Math.random().toString(36).substring(2, 15);
+        }
+
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' bytes';
+            else if (bytes < 1048576) return (bytes / 1024).toFixed(2) + ' KB';
+            else return (bytes / 1048576).toFixed(2) + ' MB';
+        }
+
+        // 页面加载完成后初始化
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

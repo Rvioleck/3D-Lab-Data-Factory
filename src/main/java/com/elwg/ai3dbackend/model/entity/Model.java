@@ -86,7 +86,7 @@ public class Model implements Serializable {
     private String modelFormat;
 
     /**
-     * 重建任务ID
+     * 重建任务ID（雪花ID的字符串表示）
      */
     private String taskId;
 

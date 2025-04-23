@@ -1,4 +1,4 @@
-# AI 3D Platform API 文档
+# 3D-Lab-Data-Factory API 文档
 
 ## 产品简介
 
@@ -197,7 +197,90 @@
 }
 ```
 
-### 1.8 获取所有用户信息（仅管理员可访问）
+### 1.8 更新当前用户个人资料
+- 请求路径: `/user/profile/update`
+- 请求方法: POST
+- 请求体:
+```json
+{
+    "userAccount": "string",    // 用户账号（可选）
+    "userName": "string",       // 用户名（可选）
+    "userAvatar": "string",     // 用户头像URL（可选）
+    "userProfile": "string"     // 用户简介（可选）
+}
+```
+- 响应数据:
+```json
+{
+    "code": 0,
+    "data": {
+        "id": "1234567890123456789",
+        "userAccount": "string",
+        "userName": "string",
+        "userAvatar": "string",
+        "userProfile": "string",
+        "userRole": "string",
+        "createTime": "2023-01-01T12:00:00",
+        "updateTime": "2023-01-01T12:00:00"
+    },
+    "message": "ok"
+}
+```
+- 说明：
+  - 该接口允许已登录用户更新自己的个人资料
+  - 可以更新用户账号、用户名、头像和简介
+  - 如果更新账号，会检查新账号是否已存在
+  - 返回更新后的用户信息
+  - 前端可以只传需要更新的字段，不需要的字段可以不传或传null
+
+### 1.9 上传用户头像
+- 请求路径: `/user/avatar/upload`
+- 请求方法: POST
+- 权限要求: 需要用户权限（通过`@AuthCheck(mustRole = UserConstant.USER_ROLE)`注解实现）
+- 请求头: `Content-Type: multipart/form-data`
+- 请求参数:
+  - file: 头像图片文件（必选）
+- 响应数据:
+```json
+{
+    "code": 0,
+    "data": "https://example.com/avatars/uuid/avatar.jpg",  // 头像URL
+    "message": "ok"
+}
+```
+- 说明：
+  - 该接口允许已登录用户上传自己的头像图片
+  - 支持的图片格式包括: jpg, jpeg, png, gif等
+  - 文件大小限制为5MB
+  - 上传成功后返回头像URL
+  - 系统会自动更新用户信息中的头像URL
+
+### 1.10 修改当前用户密码
+- 请求路径: `/user/password/update`
+- 请求方法: POST
+- 请求体:
+```json
+{
+    "oldPassword": "string",    // 旧密码
+    "newPassword": "string",    // 新密码
+    "checkPassword": "string"   // 确认新密码
+}
+```
+- 响应数据:
+```json
+{
+    "code": 0,
+    "data": true,    // 修改成功返回 true
+    "message": "ok"
+}
+```
+- 说明：
+  - 该接口允许已登录用户修改自己的密码
+  - 需要提供正确的旧密码
+  - 新密码长度不能小于8
+  - 两次输入的新密码必须一致
+
+### 1.10 获取所有用户信息（仅管理员可访问）
 - 请求路径: `/user/list`
 - 请求方法: POST
 - 权限要求: 需要管理员权限（通过`@AuthCheck(mustRole = UserConstant.ADMIN_ROLE)`注解实现）
@@ -263,6 +346,10 @@
     "message": "ok"
 }
 ```
+- 说明：
+  - 该接口返回当前登录用户创建的所有对话会话
+  - 会话按创建时间倒序排列（最新的会话排在前面）
+  - 可用于在用户界面上展示会话历史
 
 ### 2.3 获取会话消息历史
 - 请求路径: `/chat/message/{sessionId}`
@@ -284,6 +371,11 @@
     "message": "ok"
 }
 ```
+- 说明：
+  - 该接口返回指定会话下的所有历史消息
+  - 消息按时间顺序排列（最早的消息排在前面）
+  - 消息包括用户发送的内容和AI的回复
+  - 如果会话ID无效，将返回空列表
 
 ### 2.4 发送消息（支持自动创建会话）
 - 请求路径: `/chat/message`
@@ -662,6 +754,38 @@ data: [DONE]
 }
 ```
 
+### 5.6 获取图片分类列表
+- 请求路径: `/picture/categories`
+- 请求方法: GET
+- 响应数据:
+```json
+{
+    "code": 0,
+    "data": ["家具", "玩具", "装饰品", "其他"],
+    "message": "ok"
+}
+```
+- 说明：
+  - 该接口返回系统中所有不重复的图片分类
+  - 分类列表按字母顺序排序
+  - 可用于前端分类筛选功能
+
+### 5.7 获取图片标签列表
+- 请求路径: `/picture/tags`
+- 请求方法: GET
+- 响应数据:
+```json
+{
+    "code": 0,
+    "data": ["桌子", "椅子", "沙发", "床"],
+    "message": "ok"
+}
+```
+- 说明：
+  - 该接口返回系统中所有不重复的图片标签
+  - 标签从所有图片的tags字段中提取（逗号分隔）并去重
+  - 可用于前端标签筛选功能
+
 ### 5.8 批量获取图片信息
 - 请求路径: `/picture/batch`
 - 请求方法: POST
@@ -710,6 +834,11 @@ data: [DONE]
     "message": "ok"
 }
 ```
+- 说明：
+  - 该接口用于根据ID列表批量获取多个图片的详细信息
+  - 请求体为图片ID数组
+  - 返回的每个图片对象包含完整的图片信息
+  - hasModel字段表示该图片是否已关联3D模型
 
 ### 5.9 上传图片（已弃用）
 - 请求路径: `/file/upload/image`
@@ -732,15 +861,208 @@ data: [DONE]
   - 文件大小限制为10MB
   - 仅支持图片类型文件（Content-Type以`image/`开头）
 
-## 6. 3D重建接口
+## 6. 3D模型接口
 
-### 6.1 创建3D重建任务（从图片URL）
+### 6.1 获取模型详情
+- 请求路径: `/model/{id}`
+- 请求方法: GET
+- 路径参数:
+  - id: 模型ID
+- 响应数据:
+```json
+{
+    "code": 0,
+    "data": {
+        "id": "1234567890123456789",
+        "name": "3D模型示例",
+        "introduction": "这是一个3D模型示例",
+        "category": "家具",
+        "tags": "桌子,椅子",
+        "modelUrl": "https://example.com/models/uuid/model.obj",
+        "textureUrl": "https://example.com/models/uuid/texture.png",
+        "previewUrl": "https://example.com/models/uuid/preview.png",
+        "sourceImageId": "9876543210987654321",
+        "taskId": "abcdef1234567890",
+        "userId": "1234567890123456789",
+        "createTime": "2023-01-01 12:00:00",
+        "updateTime": "2023-01-01 12:00:00"
+    },
+    "message": "ok"
+}
+```
+
+### 6.2 分页获取模型列表
+- 请求路径: `/model/list/page`
+- 请求方法: POST
+- 请求体:
+```json
+{
+    "current": 1,
+    "pageSize": 10,
+    "name": "桌子",
+    "category": "家具",
+    "tags": "木质",
+    "userId": "1234567890123456789"
+}
+```
+- 响应数据:
+```json
+{
+    "code": 0,
+    "data": {
+        "records": [
+            {
+                "id": "1234567890123456789",
+                "name": "3D模型示例1",
+                "introduction": "这是一个3D模型示例",
+                "category": "家具",
+                "tags": "桌子,椅子",
+                "modelUrl": "https://example.com/models/uuid/model1.obj",
+                "textureUrl": "https://example.com/models/uuid/texture1.png",
+                "previewUrl": "https://example.com/models/uuid/preview1.png",
+                "sourceImageId": "9876543210987654321",
+                "taskId": "abcdef1234567890",
+                "userId": "1234567890123456789",
+                "createTime": "2023-01-01 12:00:00",
+                "updateTime": "2023-01-01 12:00:00"
+            }
+        ],
+        "total": 100,
+        "size": 10,
+        "current": 1,
+        "pages": 10
+    },
+    "message": "ok"
+}
+```
+- 说明：
+  - 所有查询参数都是可选的
+  - name参数支持模糊查询
+  - tags参数支持模糊查询
+
+### 6.3 更新模型信息（需要用户权限）
+- 请求路径: `/model/update`
+- 请求方法: POST
+- 权限要求: 需要用户权限（通过`@AuthCheck(mustRole = UserConstant.USER_ROLE)`注解实现）
+- 请求体:
+```json
+{
+    "id": "1234567890123456789",
+    "name": "更新后的名称",
+    "introduction": "更新后的简介",
+    "category": "更新后的分类",
+    "tags": "更新,标签"
+}
+```
+- 响应数据:
+```json
+{
+    "code": 0,
+    "data": true,
+    "message": "ok"
+}
+```
+- 说明：
+  - 只能更新模型的基本信息，不能更新模型文件本身
+  - 只有模型的创建者或管理员可以更新模型信息
+
+### 6.4 删除模型（需要用户权限）
+- 请求路径: `/model/delete`
+- 请求方法: POST
+- 权限要求: 需要用户权限（通过`@AuthCheck(mustRole = UserConstant.USER_ROLE)`注解实现）
+- 请求体:
+```json
+{
+    "id": "1234567890123456789"
+}
+```
+- 响应数据:
+```json
+{
+    "code": 0,
+    "data": true,
+    "message": "ok"
+}
+```
+- 说明：
+  - 需要用户权限才能访问此接口
+  - 只有模型的创建者或管理员可以删除模型
+
+### 6.5 获取模型分类列表
+- 请求路径: `/model/categories`
+- 请求方法: GET
+- 响应数据:
+```json
+{
+    "code": 0,
+    "data": ["家具", "玩具", "装饰品", "其他"],
+    "message": "ok"
+}
+```
+- 说明：
+  - 该接口返回系统中所有不重复的模型分类
+  - 分类列表按字母顺序排序
+  - 可用于前端分类筛选功能
+
+### 6.6 批量获取模型信息
+- 请求路径: `/model/batch`
+- 请求方法: POST
+- 请求体:
+```json
+["1234567890123456789", "9876543210987654321"]
+```
+- 响应数据:
+```json
+{
+    "code": 0,
+    "data": [
+        {
+            "id": "1234567890123456789",
+            "name": "3D模型示例1",
+            "introduction": "这是一个3D模型示例",
+            "category": "家具",
+            "tags": "桌子,椅子",
+            "modelUrl": "https://example.com/models/uuid/model1.obj",
+            "textureUrl": "https://example.com/models/uuid/texture1.png",
+            "previewUrl": "https://example.com/models/uuid/preview1.png",
+            "sourceImageId": "9876543210987654321",
+            "taskId": "abcdef1234567890",
+            "userId": "1234567890123456789",
+            "createTime": "2023-01-01 12:00:00",
+            "updateTime": "2023-01-01 12:00:00"
+        },
+        {
+            "id": "9876543210987654321",
+            "name": "3D模型示例2",
+            "introduction": "这是另一个3D模型示例",
+            "category": "玩具",
+            "tags": "积木,玩偶",
+            "modelUrl": "https://example.com/models/uuid/model2.obj",
+            "textureUrl": "https://example.com/models/uuid/texture2.png",
+            "previewUrl": "https://example.com/models/uuid/preview2.png",
+            "sourceImageId": "1234567890123456789",
+            "taskId": "1234567890abcdef",
+            "userId": "1234567890123456789",
+            "createTime": "2023-01-02 12:00:00",
+            "updateTime": "2023-01-02 12:00:00"
+        }
+    ],
+    "message": "ok"
+}
+```
+- 说明：
+  - 该接口用于根据ID列表批量获取多个模型的详细信息
+  - 请求体为模型ID数组
+  - 返回的每个模型对象包含完整的模型信息
+
+## 7. 3D重建接口
+
+### 7.1 创建3D重建任务
 - 请求路径: `/api/reconstruction/create`
 - 请求方法: POST
 - 请求参数:
-  - imageUrl: 图片URL或路径（必需）
+  - imageId: 图片ID（必需）
   - name: 模型名称（可选）
-  - category: 模型分类（可选）
 - 响应数据:
 ```json
 {
@@ -754,21 +1076,16 @@ data: [DONE]
 ```
 - 说明：
   - 该接口使用已上传的图片创建3D重建任务
-  - imageUrl可以是从`/picture/upload`接口返回的URL
+  - imageId是从`/picture/upload`接口返回的图片ID
   - 返回任务ID和SSE事件流URL
   - 客户端可以通过SSE事件流实时获取处理进度和结果
   - 需要管理员权限才能访问此接口（通过`@AuthCheck(mustRole = "admin")`注解实现）
 
-### 6.1.1 创建3D重建任务（从图片ID）
-- 请求路径: `/api/reconstruction/create-from-image`
-- 请求方法: POST
-- 请求体:
-```json
-{
-    "imageId": "1234567890123456789",
-    "name": "模型名称",
-    "category": "模型分类"
-}
+### 7.2 获取任务状态
+- 请求路径: `/api/reconstruction/status/{taskId}`
+- 请求方法: GET
+- 路径参数:
+  - taskId: 任务ID
 ```
 - 响应数据:
 ```json
@@ -788,7 +1105,7 @@ data: [DONE]
   - 返回任务ID和SSE事件流URL
   - 需要管理员权限才能访问此接口
 
-### 6.2 SSE事件流
+### 7.3 SSE事件流
 - 请求路径: `/api/reconstruction/events/{taskId}`
 - 请求方法: GET
 - 路径参数:
@@ -819,7 +1136,7 @@ data: [DONE]
   - 客户端可以根据status事件中的状态来判断任务是否完成
   - 如果任务已经有状态或结果文件，连接建立后会立即发送相应事件
 
-### 6.3 获取任务状态
+### 7.4 获取任务状态
 - 请求路径: `/api/reconstruction/status/{taskId}`
 - 请求方法: GET
 - 路径参数:
@@ -851,7 +1168,7 @@ data: [DONE]
   - 当任务完成（status为"COMPLETED"）时，会返回所有结果文件的URL
   - 当任务失败（status为"FAILED"）时，errorMessage字段会包含错误信息
 
-### 6.4 获取任务列表
+### 7.5 获取任务列表
 - 请求路径: `/api/reconstruction/tasks`
 - 请求方法: GET
 - 权限要求: 需要管理员权限（通过`@AuthCheck(mustRole = "admin")`注解实现）
@@ -895,7 +1212,7 @@ data: [DONE]
   - 返回当前登录用户创建的任务列表
   - 可以通过status参数筛选特定状态的任务
 
-### 6.5 获取重建结果文件
+### 7.6 获取重建结果文件
 - 请求路径: `/api/reconstruction/files/{taskId}/{fileName}`
 - 请求方法: GET
 - 路径参数:

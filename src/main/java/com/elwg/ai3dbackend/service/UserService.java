@@ -3,12 +3,18 @@ package com.elwg.ai3dbackend.service;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.elwg.ai3dbackend.common.DeleteRequest;
+import com.elwg.ai3dbackend.model.dto.UserCreateRequest;
+import com.elwg.ai3dbackend.model.dto.UserPasswordUpdateRequest;
+import com.elwg.ai3dbackend.model.dto.UserProfileUpdateRequest;
 import com.elwg.ai3dbackend.model.dto.UserQueryRequest;
+import com.elwg.ai3dbackend.model.dto.UserUpdateRequest;
 import com.elwg.ai3dbackend.model.entity.User;
 import com.elwg.ai3dbackend.model.vo.UserDetailVO;
 import com.elwg.ai3dbackend.model.vo.UserVO;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.List;
 
 /**
  * 用户服务接口
@@ -128,4 +134,57 @@ public interface UserService extends IService<User> {
      * @return 是否删除成功
      */
     boolean physicalDeleteUser(Long id);
+
+    /**
+     * 更新用户个人资料
+     * 允许用户更新自己的个人资料，包括账号、用户名、头像和简介
+     *
+     * @param profileUpdateRequest 个人资料更新请求
+     * @param request HTTP请求对象
+     * @return 更新后的用户视图对象
+     */
+    UserVO updateUserProfile(UserProfileUpdateRequest profileUpdateRequest, HttpServletRequest request);
+
+    /**
+     * 管理员更新用户信息
+     *
+     * @param userUpdateRequest 用户更新请求
+     * @param request HTTP请求对象
+     * @return 是否更新成功
+     */
+    boolean adminUpdateUser(UserUpdateRequest userUpdateRequest, HttpServletRequest request);
+
+    /**
+     * 验证并创建新用户
+     *
+     * @param userCreateRequest 用户创建请求
+     * @param request HTTP请求对象
+     * @return 新用户ID
+     */
+    Long createUserByAdmin(UserCreateRequest userCreateRequest, HttpServletRequest request);
+
+    /**
+     * 更新用户密码
+     *
+     * @param passwordUpdateRequest 密码更新请求
+     * @param request HTTP请求对象
+     * @return 是否更新成功
+     */
+    boolean updateUserPassword(UserPasswordUpdateRequest passwordUpdateRequest, HttpServletRequest request);
+
+    /**
+     * 删除用户（管理员操作）
+     *
+     * @param deleteRequest 删除请求
+     * @param request HTTP请求对象
+     * @return 是否删除成功
+     */
+    boolean deleteUser(DeleteRequest deleteRequest, HttpServletRequest request);
+
+    /**
+     * 获取所有用户信息（管理员操作）
+     *
+     * @return 所有用户信息列表
+     */
+    List<UserVO> listAllUsers();
 }

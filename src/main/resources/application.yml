@@ -47,8 +47,6 @@ deepseek:
     connect-timeout: 30
     read-timeout: 30
     write-timeout: 30
-    # 是否使用SDK（已禁用）
-    use-sdk: false
     # 温度参数，控制生成文本的随机性
     temperature: 0.7
     # 最大令牌数
@@ -77,7 +75,13 @@ reconstruction:
       read.timeout: 300
       # 写入超时时间（秒）
       write.timeout: 30
-  storage:
+  # 回调配置
+  callback:
+    # 回调主机名（可选，如果不设置则自动检测）
+    # 设置为服务器的公网IP或域名，确保Python服务可以访问
+    # host: your-server-ip-or-domain
+    # 默认IP地址（当自动检测失败时使用）
+    default-ip: 10.0.0.123
 
 cos:
   client:

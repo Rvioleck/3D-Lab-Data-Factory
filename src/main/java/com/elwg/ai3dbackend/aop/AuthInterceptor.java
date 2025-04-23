@@ -2,11 +2,12 @@ package com.elwg.ai3dbackend.aop;
 
 import cn.hutool.core.util.StrUtil;
 import com.elwg.ai3dbackend.annotation.AuthCheck;
+import com.elwg.ai3dbackend.constant.UserConstant;
 import com.elwg.ai3dbackend.exception.BusinessException;
 import com.elwg.ai3dbackend.exception.ErrorCode;
 import com.elwg.ai3dbackend.model.entity.User;
 import com.elwg.ai3dbackend.model.enums.UserRoleEnum;
-import com.elwg.ai3dbackend.service.UserService;
+import com.elwg.ai3dbackend.model.vo.UserVO;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -15,8 +16,8 @@ import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
-import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
 
 /**
  * 权限校验 AOP
@@ -25,9 +26,6 @@ import javax.servlet.http.HttpServletRequest;
 @Aspect
 @Component
 public class AuthInterceptor {
-
-    @Resource
-    private UserService userService;
 
     /**
      * 环绕通知，拦截带有 AuthCheck 注解的方法
@@ -75,8 +73,14 @@ public class AuthInterceptor {
         RequestAttributes requestAttributes = RequestContextHolder.currentRequestAttributes();
         HttpServletRequest request = ((ServletRequestAttributes) requestAttributes).getRequest();
 
-        // 3. 获取当前登录用户（会自动校验是否登录）
-        User loginUser = userService.getLoginUser(request);
+        // 3. 从会话中获取当前登录用户
+        HttpSession session = request.getSession();
+        UserVO loginUser = (UserVO) session.getAttribute(UserConstant.USER_LOGIN_STATE);
+
+        // 如果用户未登录，抛出异常
+        if (loginUser == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR);
+        }
 
         // 4. 判断用户角色是否匹配
         String userRole = loginUser.getUserRole();

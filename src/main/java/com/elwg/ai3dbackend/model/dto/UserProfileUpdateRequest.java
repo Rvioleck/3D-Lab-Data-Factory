@@ -22,6 +22,12 @@ public class UserProfileUpdateRequest implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
+     * 用户账号
+     */
+    @ApiModelProperty(value = "用户账号", example = "zhangsan")
+    private String userAccount;
+
+    /**
      * 用户名
      */
     @ApiModelProperty(value = "用户名", example = "张三")

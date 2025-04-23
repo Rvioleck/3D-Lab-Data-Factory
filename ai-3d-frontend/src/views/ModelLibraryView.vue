@@ -10,12 +10,12 @@
 
       <!-- 搜索和筛选 -->
       <div class="row mb-4">
-        <div class="col-md-8">
+        <div class="col-md-6">
           <div class="input-group">
-            <input 
-              type="text" 
-              class="form-control" 
-              placeholder="搜索模型名称..." 
+            <input
+              type="text"
+              class="form-control"
+              placeholder="搜索模型名称..."
               v-model="searchQuery"
               @input="debounceSearch"
             >
@@ -24,101 +24,130 @@
             </button>
           </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
+          <select class="form-select" v-model="selectedCategory" @change="search">
+            <option value="">所有分类</option>
+            <option v-for="category in categories" :key="category" :value="category">
+              {{ category }}
+            </option>
+          </select>
+        </div>
+        <div class="col-md-3">
           <div class="d-flex justify-content-end">
             <div class="btn-group">
-              <button 
-                class="btn" 
-                :class="modelStatus === 'all' ? 'btn-primary' : 'btn-outline-primary'" 
+              <button
+                class="btn"
+                :class="modelStatus === 'all' ? 'btn-primary' : 'btn-outline-primary'"
                 @click="setModelStatus('all')"
               >
                 全部模型
               </button>
-              <button 
-                class="btn" 
-                :class="modelStatus === 'completed' ? 'btn-primary' : 'btn-outline-primary'" 
-                @click="setModelStatus('completed')"
+              <button
+                class="btn"
+                :class="modelStatus === 'COMPLETED' ? 'btn-primary' : 'btn-outline-primary'"
+                @click="setModelStatus('COMPLETED')"
               >
                 已完成
+              </button>
+              <button
+                class="btn"
+                :class="modelStatus === 'PROCESSING' ? 'btn-primary' : 'btn-outline-primary'"
+                @click="setModelStatus('PROCESSING')"
+              >
+                处理中
               </button>
             </div>
           </div>
         </div>
       </div>
 
+      <!-- 加载中提示 -->
+      <div v-if="loading" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">加载中...</span>
+        </div>
+        <p class="mt-3">正在加载模型数据...</p>
+      </div>
+
+      <!-- 无数据提示 -->
+      <div v-else-if="filteredModels.length === 0" class="text-center py-5">
+        <i class="bi bi-inbox-fill display-1 text-muted"></i>
+        <h3 class="mt-4">暂无模型数据</h3>
+        <p class="text-muted">
+          {{ searchQuery || selectedCategory ? '没有找到符合条件的模型' : '您还没有创建任何3D模型' }}
+        </p>
+        <router-link to="/images" class="btn btn-primary mt-3">
+          <i class="bi bi-images me-2"></i> 浏览图片库
+        </router-link>
+      </div>
+
       <!-- 模型列表 -->
-      <div class="row">
-        <div v-if="loading" class="col-12 text-center py-5">
-          <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">加载中...</span>
-          </div>
-          <p class="mt-3">正在加载模型...</p>
-        </div>
-
-        <div v-else-if="filteredModels.length === 0" class="col-12 text-center py-5">
-          <div class="empty-state">
-            <i class="bi bi-box" style="font-size: 3rem;"></i>
-            <h4 class="mt-3">暂无模型</h4>
-            <p class="text-muted">您还没有创建任何3D模型</p>
-            <router-link to="/images" class="btn btn-primary mt-2">
-              <i class="bi bi-image me-1"></i> 浏览图片库
-            </router-link>
-          </div>
-        </div>
-
-        <div v-else class="col-12">
-          <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-            <!-- 模型卡片 -->
-            <div 
-              v-for="model in filteredModels" 
-              :key="model.id"
-              class="col"
-            >
-              <div class="card h-100 model-card">
-                <div class="card-img-container">
-                  <!-- 模型预览图 -->
-                  <div class="model-preview" :style="model.pixelImagesUrl ? `background-image: url(${model.pixelImagesUrl})` : ''">
-                    <div v-if="!model.pixelImagesUrl" class="model-icon">
-                      <i class="bi bi-box"></i>
-                    </div>
-                    <div class="model-overlay">
-                      <button class="btn btn-sm btn-light" @click="viewModel(model)">
-                        <i class="bi bi-eye"></i> 预览
-                      </button>
-                    </div>
-                  </div>
-                  <!-- 状态标识 -->
-                  <div class="model-status-badge">
-                    <span class="badge" :class="model.status === 'completed' ? 'bg-success' : 'bg-primary'">
-                      {{ model.status === 'completed' ? '已完成' : '处理中' }}
-                    </span>
-                  </div>
+      <div v-else class="row">
+        <div v-for="model in filteredModels" :key="model.id" class="col-md-4 col-sm-6 mb-4">
+          <div class="card h-100 model-card">
+            <div class="model-status-badge" :class="getStatusClass(model.status)">
+              {{ getStatusText(model.status) }}
+            </div>
+            
+            <!-- 模型预览图 -->
+            <div class="model-preview" @click="viewModel(model.id)">
+              <img
+                v-if="model.status === 'COMPLETED' && model.pixelImagesUrl"
+                :src="model.pixelImagesUrl"
+                :alt="model.name"
+                class="card-img-top"
+              >
+              <div v-else-if="model.status === 'COMPLETED'" class="placeholder-preview">
+                <i class="bi bi-box display-4"></i>
+                <p>3D模型已生成</p>
+              </div>
+              <div v-else-if="model.status === 'PROCESSING'" class="placeholder-preview processing">
+                <div class="spinner-border text-primary" role="status">
+                  <span class="visually-hidden">处理中...</span>
                 </div>
-                <div class="card-body">
-                  <h5 class="card-title text-truncate">{{ model.name || '未命名模型' }}</h5>
-                  <div class="d-flex justify-content-between align-items-center">
-                    <p class="card-text text-muted small mb-0">
-                      <i class="bi bi-clock me-1"></i> {{ formatDate(model.createTime) }}
-                    </p>
-                    <div class="model-actions">
-                      <button class="btn btn-sm btn-outline-primary me-1" @click="viewModel(model)" title="查看模型">
-                        <i class="bi bi-eye"></i>
-                      </button>
-                      <button class="btn btn-sm btn-outline-secondary" @click="downloadModel(model)" title="下载模型" :disabled="model.status !== 'completed'">
-                        <i class="bi bi-download"></i>
-                      </button>
-                    </div>
-                  </div>
+                <p>模型生成中...</p>
+              </div>
+              <div v-else class="placeholder-preview">
+                <i class="bi bi-hourglass-split display-4"></i>
+                <p>等待处理</p>
+              </div>
+            </div>
+            
+            <div class="card-body">
+              <h5 class="card-title">{{ model.name || '未命名模型' }}</h5>
+              <p v-if="model.introduction" class="card-text text-muted small">
+                {{ model.introduction }}
+              </p>
+              <div class="model-meta">
+                <div class="badges mb-2">
+                  <span v-if="model.category" class="badge bg-secondary me-1">{{ model.category }}</span>
+                  <span v-if="model.modelFormat" class="badge bg-info me-1">{{ model.modelFormat }}</span>
                 </div>
-                <div class="card-footer bg-transparent">
-                  <div class="d-flex align-items-center">
-                    <small class="text-muted">源图片:</small>
-                    <div class="source-image-thumbnail ms-2" v-if="model.sourceImageUrl">
-                      <img :src="model.sourceImageUrl" alt="源图片" @click="viewSourceImage(model)">
-                    </div>
-                    <span class="text-muted ms-2" v-else>无源图片</span>
-                  </div>
+                <div class="text-muted small mb-2">
+                  <i class="bi bi-calendar-event me-1"></i> {{ formatDate(model.createTime) }}
                 </div>
+                <div v-if="model.sourceImageUrl" class="source-image">
+                  <span class="text-muted small">源图片:</span>
+                  <img :src="model.sourceImageUrl" :alt="model.name + ' 源图片'" class="source-image-thumbnail">
+                </div>
+              </div>
+            </div>
+            <div class="card-footer">
+              <div class="d-grid gap-2">
+                <button
+                  class="btn btn-primary"
+                  @click="viewModel(model.id)"
+                  :disabled="model.status !== 'COMPLETED'"
+                >
+                  <i class="bi bi-box me-1"></i> 查看模型
+                </button>
+                <button
+                  v-if="isAdmin"
+                  class="btn btn-outline-danger"
+                  @click="confirmDeleteModel(model)"
+                >
+                  <i class="bi bi-trash me-1"></i> 删除
+                </button>
               </div>
             </div>
           </div>
@@ -126,18 +155,18 @@
       </div>
 
       <!-- 分页 -->
-      <div class="row mt-4">
+      <div v-if="totalPages > 1" class="row mt-4">
         <div class="col-12">
-          <nav v-if="totalPages > 1">
+          <nav aria-label="模型分页">
             <ul class="pagination justify-content-center">
               <li class="page-item" :class="{ disabled: currentPage === 1 }">
                 <a class="page-link" href="#" @click.prevent="changePage(currentPage - 1)">上一页</a>
               </li>
-              <li 
-                v-for="page in paginationItems" 
+              <li
+                v-for="page in paginationItems"
                 :key="page"
                 class="page-item"
-                :class="{ active: page === currentPage }"
+                :class="{ active: currentPage === page }"
               >
                 <a class="page-link" href="#" @click.prevent="changePage(page)">{{ page }}</a>
               </li>
@@ -156,11 +185,16 @@
 import { ref, computed, onMounted } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
 import debounce from 'lodash/debounce'
+import { listModelsByPage, getModelCategories, deleteModel } from '@/api/model'
 
-// API URL
-const API_URL = import.meta.env.VITE_API_URL || ''
+// 模型状态常量
+const MODEL_STATUS = {
+  PENDING: 'PENDING',
+  PROCESSING: 'PROCESSING',
+  COMPLETED: 'COMPLETED',
+  FAILED: 'FAILED'
+}
 
 export default {
   name: 'ModelLibraryView',
@@ -168,7 +202,7 @@ export default {
     const store = useStore()
     const router = useRouter()
     const isAdmin = computed(() => store.getters['user/isAdmin'])
-    
+
     // 状态变量
     const loading = ref(false)
     const models = ref([])
@@ -177,84 +211,22 @@ export default {
     const currentPage = ref(1)
     const pageSize = ref(12)
     const totalItems = ref(0)
-    
-    // 模拟3D模型数据 - 实际应用中应该从API获取
-    const mockModels = [
-      {
-        id: 'm1',
-        name: '显微镜模型',
-        status: 'completed',
-        pixelImagesUrl: 'https://via.placeholder.com/300x200?text=显微镜纹理',
-        xyzImagesUrl: 'https://via.placeholder.com/300x200?text=显微镜深度',
-        objUrl: 'https://example.com/models/microscope.obj',
-        mtlUrl: 'https://example.com/models/microscope.mtl',
-        textureUrl: 'https://example.com/models/microscope.png',
-        outputZipUrl: 'https://example.com/models/microscope.zip',
-        sourceImageId: '1',
-        sourceImageUrl: 'https://via.placeholder.com/100x100?text=显微镜',
-        taskId: 'abc123def456',
-        createTime: '2023-04-16T14:20:00Z'
-      },
-      {
-        id: 'm2',
-        name: '试管架模型',
-        status: 'completed',
-        pixelImagesUrl: 'https://via.placeholder.com/300x200?text=试管架纹理',
-        xyzImagesUrl: 'https://via.placeholder.com/300x200?text=试管架深度',
-        objUrl: 'https://example.com/models/test-tube-rack.obj',
-        mtlUrl: 'https://example.com/models/test-tube-rack.mtl',
-        textureUrl: 'https://example.com/models/test-tube-rack.png',
-        outputZipUrl: 'https://example.com/models/test-tube-rack.zip',
-        sourceImageId: '2',
-        sourceImageUrl: 'https://via.placeholder.com/100x100?text=试管架',
-        taskId: 'def456ghi789',
-        createTime: '2023-04-17T09:15:00Z'
-      },
-      {
-        id: 'm3',
-        name: '培养皿模型',
-        status: 'processing',
-        pixelImagesUrl: null,
-        xyzImagesUrl: null,
-        objUrl: null,
-        mtlUrl: null,
-        textureUrl: null,
-        outputZipUrl: null,
-        sourceImageId: '3',
-        sourceImageUrl: 'https://via.placeholder.com/100x100?text=培养皿',
-        taskId: 'xyz789abc012',
-        createTime: '2023-04-18T11:45:00Z'
-      }
-    ]
-    
+    const categories = ref([])
+    const selectedCategory = ref('')
+
     // 计算属性
     const filteredModels = computed(() => {
-      let result = [...models.value]
-      
-      // 根据状态筛选
-      if (modelStatus.value !== 'all') {
-        result = result.filter(model => model.status === modelStatus.value)
-      }
-      
-      // 根据搜索关键词筛选
-      if (searchQuery.value) {
-        const query = searchQuery.value.toLowerCase()
-        result = result.filter(model => 
-          model.name && model.name.toLowerCase().includes(query)
-        )
-      }
-      
-      return result
+      return models.value
     })
-    
+
     const totalPages = computed(() => {
       return Math.ceil(totalItems.value / pageSize.value)
     })
-    
+
     const paginationItems = computed(() => {
       const items = []
       const maxVisiblePages = 5
-      
+
       if (totalPages.value <= maxVisiblePages) {
         // 显示所有页码
         for (let i = 1; i <= totalPages.value; i++) {
@@ -264,111 +236,159 @@ export default {
         // 显示部分页码
         let startPage = Math.max(1, currentPage.value - Math.floor(maxVisiblePages / 2))
         let endPage = Math.min(totalPages.value, startPage + maxVisiblePages - 1)
-        
+
         // 调整起始页
         if (endPage - startPage + 1 < maxVisiblePages) {
           startPage = Math.max(1, endPage - maxVisiblePages + 1)
         }
-        
+
         for (let i = startPage; i <= endPage; i++) {
           items.push(i)
         }
       }
-      
+
       return items
     })
-    
+
     // 方法
     const loadModels = async () => {
       loading.value = true
       try {
-        // 实际应用中应该调用API
-        // const response = await axios.get(`${API_URL}/api/models`, {
-        //   params: {
-        //     status: modelStatus.value !== 'all' ? modelStatus.value : undefined,
-        //     page: currentPage.value,
-        //     pageSize: pageSize.value,
-        //     query: searchQuery.value || undefined
-        //   },
-        //   withCredentials: true
-        // })
-        // models.value = response.data.records
-        // totalItems.value = response.data.total
-        
-        // 模拟API响应
-        setTimeout(() => {
-          models.value = mockModels
-          totalItems.value = mockModels.length
-          loading.value = false
-        }, 500)
+        // 调用API获取模型列表
+        const params = {
+          current: currentPage.value,
+          pageSize: pageSize.value,
+          name: searchQuery.value || undefined,
+          category: selectedCategory.value || undefined,
+          status: modelStatus.value !== 'all' ? modelStatus.value : undefined
+        }
+
+        const response = await listModelsByPage(params)
+        if (response.code === 0) {
+          models.value = response.data.records || []
+          totalItems.value = response.data.total || 0
+          console.log('加载模型成功:', models.value)
+        } else {
+          console.error('获取模型列表失败:', response.message)
+          models.value = []
+          totalItems.value = 0
+        }
       } catch (error) {
         console.error('加载模型失败:', error)
+        models.value = []
+        totalItems.value = 0
+      } finally {
         loading.value = false
       }
     }
-    
+
+    // 加载模型分类列表
+    const loadCategories = async () => {
+      try {
+        const response = await getModelCategories()
+        if (response.code === 0 && response.data) {
+          categories.value = response.data
+        }
+      } catch (error) {
+        console.error('加载分类失败:', error)
+      }
+    }
+
+    // 搜索方法
     const search = () => {
       currentPage.value = 1
       loadModels()
     }
-    
+
+    // 防抖搜索
     const debounceSearch = debounce(() => {
       search()
-    }, 300)
-    
+    }, 500)
+
+    // 设置模型状态筛选
     const setModelStatus = (status) => {
       modelStatus.value = status
-      currentPage.value = 1
-      loadModels()
+      search()
     }
-    
+
+    // 切换页码
     const changePage = (page) => {
       if (page < 1 || page > totalPages.value) return
       currentPage.value = page
       loadModels()
     }
-    
-    const viewModel = (model) => {
-      router.push(`/models/${model.id}`)
+
+    // 查看模型详情
+    const viewModel = (modelId) => {
+      router.push(`/models/${modelId}`)
     }
-    
-    const viewSourceImage = (model) => {
-      if (model.sourceImageId) {
-        router.push(`/images/${model.sourceImageId}`)
+
+    // 确认删除模型
+    const confirmDeleteModel = (model) => {
+      if (confirm(`确定要删除模型 "${model.name || '未命名模型'}" 吗？此操作不可恢复。`)) {
+        deleteModelById(model.id)
       }
     }
-    
-    const downloadModel = (model) => {
-      if (!model || model.status !== 'completed' || !model.outputZipUrl) {
-        alert('模型还未完成生成，无法下载')
-        return
+
+    // 删除模型
+    const deleteModelById = async (modelId) => {
+      try {
+        const response = await deleteModel(modelId)
+        if (response.code === 0) {
+          alert('删除成功')
+          loadModels() // 重新加载模型列表
+        } else {
+          alert(`删除失败: ${response.message}`)
+        }
+      } catch (error) {
+        console.error('删除模型失败:', error)
+        alert(`删除失败: ${error.message || '未知错误'}`)
       }
-      
-      // 实际应用中应该使用正确的URL
-      window.open(model.outputZipUrl, '_blank')
     }
-    
+
     // 格式化日期
-    const formatDate = (dateString) => {
-      if (!dateString) return '未知时间'
-      
-      const date = new Date(dateString)
-      const options = { 
-        year: 'numeric', 
-        month: 'short', 
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      }
-      
-      return date.toLocaleDateString('zh-CN', options)
+    const formatDate = (dateStr) => {
+      if (!dateStr) return ''
+      const date = new Date(dateStr)
+      return date.toLocaleString()
     }
-    
-    // 生命周期钩子
+
+    // 获取状态文本
+    const getStatusText = (status) => {
+      switch (status) {
+        case MODEL_STATUS.PENDING: return '等待中'
+        case MODEL_STATUS.PROCESSING: return '处理中'
+        case MODEL_STATUS.COMPLETED: return '已完成'
+        case MODEL_STATUS.FAILED: return '失败'
+        case 'completed': return '已完成' // 兼容旧数据
+        case 'processing': return '处理中' // 兼容旧数据
+        case 'pending': return '等待中' // 兼容旧数据
+        case 'failed': return '失败' // 兼容旧数据
+        default: return '未知'
+      }
+    }
+
+    // 获取状态样式类
+    const getStatusClass = (status) => {
+      switch (status) {
+        case MODEL_STATUS.PENDING: return 'status-pending'
+        case MODEL_STATUS.PROCESSING: return 'status-processing'
+        case MODEL_STATUS.COMPLETED: return 'status-completed'
+        case MODEL_STATUS.FAILED: return 'status-failed'
+        case 'completed': return 'status-completed' // 兼容旧数据
+        case 'processing': return 'status-processing' // 兼容旧数据
+        case 'pending': return 'status-pending' // 兼容旧数据
+        case 'failed': return 'status-failed' // 兼容旧数据
+        default: return ''
+      }
+    }
+
+    // 组件挂载时加载数据
     onMounted(() => {
       loadModels()
+      loadCategories()
     })
-    
+
     return {
       loading,
       models,
@@ -376,30 +396,37 @@ export default {
       searchQuery,
       modelStatus,
       currentPage,
+      pageSize,
+      totalItems,
       totalPages,
       paginationItems,
+      categories,
+      selectedCategory,
       isAdmin,
-      
-      loadModels,
+
       search,
       debounceSearch,
       setModelStatus,
       changePage,
       viewModel,
-      viewSourceImage,
-      downloadModel,
-      formatDate
+      confirmDeleteModel,
+      formatDate,
+      getStatusText,
+      getStatusClass
     }
   }
 }
 </script>
 
 <style scoped>
-/* 模型卡片样式 */
+.model-library-view {
+  min-height: calc(100vh - 70px);
+}
+
 .model-card {
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: all 0.3s ease;
+  position: relative;
   overflow: hidden;
-  border-radius: 8px;
 }
 
 .model-card:hover {
@@ -407,83 +434,93 @@ export default {
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
 }
 
-.card-img-container {
-  position: relative;
-  height: 180px;
-  overflow: hidden;
-  background-color: #f8f9fa;
-}
-
-/* 模型预览区域 */
-.model-preview {
-  width: 100%;
-  height: 100%;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.model-icon {
-  font-size: 3rem;
-  color: #6c757d;
-}
-
-.model-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.3);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-
-.model-card:hover .model-overlay {
-  opacity: 1;
-}
-
 .model-status-badge {
   position: absolute;
   top: 10px;
   right: 10px;
-  z-index: 2;
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  z-index: 10;
+  color: white;
 }
 
-/* 源图片缩略图 */
-.source-image-thumbnail {
-  width: 30px;
-  height: 30px;
-  border-radius: 4px;
+.status-pending {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.status-processing {
+  background-color: #0d6efd;
+}
+
+.status-completed {
+  background-color: #198754;
+}
+
+.status-failed {
+  background-color: #dc3545;
+}
+
+.model-preview {
+  height: 200px;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f8f9fa;
   cursor: pointer;
-  border: 1px solid #dee2e6;
 }
 
-.source-image-thumbnail img {
+.model-preview img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 0.3s ease;
 }
 
-/* 空状态样式 */
-.empty-state {
+.model-preview:hover img {
+  transform: scale(1.05);
+}
+
+.placeholder-preview {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 3rem 0;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  color: #6c757d;
+  padding: 20px;
+  text-align: center;
 }
 
-/* 响应式调整 */
-@media (max-width: 768px) {
-  .card-img-container {
+.placeholder-preview.processing {
+  background-color: rgba(13, 110, 253, 0.05);
+}
+
+.model-meta {
+  margin-top: 15px;
+}
+
+.source-image {
+  display: flex;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.source-image-thumbnail {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-left: 10px;
+  border: 1px solid #dee2e6;
+}
+
+@media (max-width: 767.98px) {
+  .model-preview {
     height: 150px;
   }
 }

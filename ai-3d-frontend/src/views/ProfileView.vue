@@ -6,9 +6,20 @@
           <div class="card mb-4">
             <div class="card-body text-center">
               <div class="avatar-container mb-3">
-                <div class="avatar mx-auto">
-                  <i class="bi bi-person-circle"></i>
+                <div class="avatar mx-auto" @click="triggerAvatarUpload">
+                  <img v-if="user?.userAvatar" :src="user.userAvatar" alt="用户头像" class="avatar-img" />
+                  <i v-else class="bi bi-person-circle"></i>
+                  <div class="avatar-overlay">
+                    <i class="bi bi-camera"></i>
+                  </div>
                 </div>
+                <input
+                  type="file"
+                  ref="avatarInput"
+                  class="d-none"
+                  accept="image/*"
+                  @change="handleAvatarChange"
+                />
               </div>
               <h5 class="mb-1">{{ user?.userName || user?.userAccount }}</h5>
               <p class="text-muted mb-3">
@@ -23,6 +34,9 @@
               </div>
             </div>
           </div>
+
+          <!-- 用户统计信息 -->
+          <UserProfileStats :userId="user?.id" :createTime="user?.createTime" />
         </div>
 
         <div class="col-lg-8">
@@ -114,6 +128,36 @@
           </div>
           <div class="modal-body">
             <form @submit.prevent="submitUpdateProfile">
+              <div class="mb-3 text-center">
+                <div class="avatar-edit-container mb-3">
+                  <div class="avatar-edit mx-auto" @click="triggerModalAvatarUpload">
+                    <img v-if="previewAvatar" :src="previewAvatar" alt="用户头像" class="avatar-img" />
+                    <img v-else-if="user?.userAvatar" :src="user.userAvatar" alt="用户头像" class="avatar-img" />
+                    <i v-else class="bi bi-person-circle"></i>
+                    <div class="avatar-overlay">
+                      <i class="bi bi-camera"></i>
+                    </div>
+                  </div>
+                  <input
+                    type="file"
+                    ref="modalAvatarInput"
+                    class="d-none"
+                    accept="image/*"
+                    @change="handleModalAvatarChange"
+                  />
+                </div>
+                <small class="text-muted">点击头像更换图片</small>
+              </div>
+              <div class="mb-3">
+                <label for="userAccount" class="form-label">账号</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="userAccount"
+                  v-model="profileForm.userAccount"
+                />
+                <small class="text-muted">账号一旦设置后不建议频繁修改</small>
+              </div>
               <div class="mb-3">
                 <label for="userName" class="form-label">用户名</label>
                 <input
@@ -217,13 +261,15 @@ import { ref, computed, onMounted } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
 import { Modal } from 'bootstrap'
-import { getLoginUser, updateUserProfile, updateUserPassword } from '@/api/user'
+import { getLoginUser, updateUserProfile, updateUserPassword, uploadUserAvatar } from '@/api/user'
 import UserActivityLog from '@/components/UserActivityLog.vue'
+import UserProfileStats from '@/components/UserProfileStats.vue'
 
 export default {
   name: 'ProfileView',
   components: {
-    UserActivityLog
+    UserActivityLog,
+    UserProfileStats
   },
   setup() {
     const store = useStore()
@@ -237,13 +283,21 @@ export default {
       router.push('/login')
     }
 
+    // 头像相关
+    const avatarInput = ref(null)
+    const modalAvatarInput = ref(null)
+    const previewAvatar = ref(null)
+    const avatarFile = ref(null)
+
     // 编辑资料模态框
     const editProfileModalRef = ref(null)
     const editProfileModal = ref(null)
     const updateProfileLoading = ref(false)
     const profileForm = ref({
+      userAccount: '',
       userName: '',
-      userProfile: ''
+      userProfile: '',
+      userAvatar: ''
     })
 
     // 修改密码模态框
@@ -277,11 +331,88 @@ export default {
       }
     }
 
+    // 触发头像上传
+    const triggerAvatarUpload = () => {
+      avatarInput.value.click()
+    }
+
+    // 处理头像变化
+    const handleAvatarChange = async (event) => {
+      const file = event.target.files[0]
+      if (!file) return
+
+      // 验证文件类型
+      if (!file.type.startsWith('image/')) {
+        showToast('请选择图片文件', 'warning')
+        return
+      }
+
+      // 验证文件大小
+      if (file.size > 5 * 1024 * 1024) { // 5MB
+        showToast('图片大小不能超过5MB', 'warning')
+        return
+      }
+
+      // 直接上传头像
+      try {
+        showToast('正在上传头像...', 'info')
+        const response = await uploadUserAvatar(file)
+
+        if (response.code === 0) {
+          // 更新用户信息
+          const updatedUser = { ...user.value, userAvatar: response.data }
+          store.commit('user/SET_CURRENT_USER', updatedUser)
+
+          showToast('头像上传成功', 'success')
+        } else {
+          showToast(`头像上传失败: ${response.message}`, 'danger')
+        }
+      } catch (error) {
+        console.error('头像上传失败:', error)
+        showToast(`头像上传失败: ${error.message || '未知错误'}`, 'danger')
+      }
+    }
+
+    // 触发模态框内的头像上传
+    const triggerModalAvatarUpload = () => {
+      modalAvatarInput.value.click()
+    }
+
+    // 处理模态框内的头像变化
+    const handleModalAvatarChange = (event) => {
+      const file = event.target.files[0]
+      if (!file) return
+
+      // 验证文件类型
+      if (!file.type.startsWith('image/')) {
+        showToast('请选择图片文件', 'warning')
+        return
+      }
+
+      // 验证文件大小
+      if (file.size > 5 * 1024 * 1024) { // 5MB
+        showToast('图片大小不能超过5MB', 'warning')
+        return
+      }
+
+      // 保存文件并预览
+      avatarFile.value = file
+      previewAvatar.value = URL.createObjectURL(file)
+    }
+
+
+
     // 显示编辑资料模态框
     const showEditProfileModal = () => {
+      // 重置头像预览
+      previewAvatar.value = null
+      avatarFile.value = null
+
       profileForm.value = {
+        userAccount: user.value?.userAccount || '',
         userName: user.value?.userName || '',
-        userProfile: user.value?.userProfile || ''
+        userProfile: user.value?.userProfile || '',
+        userAvatar: user.value?.userAvatar || ''
       }
       editProfileModal.value.show()
     }
@@ -296,8 +427,35 @@ export default {
 
       updateProfileLoading.value = true
       try {
+        // 如果有新头像，先上传头像
+        let avatarUrl = profileForm.value.userAvatar
+        if (avatarFile.value) {
+          try {
+            // 上传头像
+            const avatarResponse = await uploadUserAvatar(avatarFile.value)
+            if (avatarResponse.code === 0) {
+              avatarUrl = avatarResponse.data
+            } else {
+              showToast(`头像上传失败: ${avatarResponse.message}`, 'warning')
+              // 继续更新其他信息
+            }
+          } catch (error) {
+            console.error('头像上传失败:', error)
+            showToast(`头像上传失败: ${error.message || '未知错误'}`, 'warning')
+            // 继续更新其他信息
+          }
+        }
+
+        // 准备更新的用户资料
+        const updatedProfile = {
+          userAccount: profileForm.value.userAccount,
+          userName: profileForm.value.userName,
+          userProfile: profileForm.value.userProfile,
+          userAvatar: avatarUrl
+        }
+
         // 调用更新用户资料的API
-        const response = await updateUserProfile(profileForm.value)
+        const response = await updateUserProfile(updatedProfile)
 
         if (response.code === 0) {
           showToast('个人资料更新成功', 'success')
@@ -305,6 +463,13 @@ export default {
 
           // 更新本地用户状态
           store.commit('user/SET_CURRENT_USER', response.data)
+
+          // 释放预览URL对象
+          if (previewAvatar.value) {
+            URL.revokeObjectURL(previewAvatar.value)
+            previewAvatar.value = null
+          }
+          avatarFile.value = null
         } else {
           showToast(`更新失败: ${response.message}`, 'danger')
         }
@@ -445,10 +610,17 @@ export default {
       user,
       profileForm,
       passwordForm,
+      avatarInput,
+      modalAvatarInput,
+      previewAvatar,
       editProfileModalRef,
       updateProfileLoading,
       changePasswordModalRef,
       changePasswordLoading,
+      triggerAvatarUpload,
+      handleAvatarChange,
+      triggerModalAvatarUpload,
+      handleModalAvatarChange,
       showEditProfileModal,
       submitUpdateProfile,
       showChangePasswordModal,
@@ -483,6 +655,61 @@ export default {
   color: var(--primary-color);
   font-size: 4rem;
   margin-bottom: 1rem;
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.avatar:hover .avatar-overlay {
+  opacity: 1;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  color: white;
+  font-size: 2rem;
+}
+
+.avatar-edit-container {
+  position: relative;
+  display: inline-block;
+}
+
+.avatar-edit {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background-color: var(--bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-color);
+  font-size: 3rem;
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.avatar-edit:hover .avatar-overlay {
+  opacity: 1;
 }
 
 .card {
@@ -505,6 +732,12 @@ export default {
     width: 100px;
     height: 100px;
     font-size: 3.5rem;
+  }
+
+  .avatar-edit {
+    width: 80px;
+    height: 80px;
+    font-size: 2.5rem;
   }
 }
 </style>

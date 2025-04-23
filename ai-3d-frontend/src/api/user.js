@@ -118,6 +118,27 @@ export const updateUserProfile = async (profileData) => {
   }
 }
 
+// 上传用户头像
+export const uploadUserAvatar = async (file) => {
+  try {
+    console.log('发送上传头像请求')
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const response = await axios.post('/user/avatar/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      },
+      withCredentials: true
+    })
+    console.log('上传头像响应:', response.data)
+    return response.data
+  } catch (error) {
+    console.error('上传头像失败:', error)
+    throw error.response?.data || { message: '网络错误，请稍后重试' }
+  }
+}
+
 // 修改用户密码
 export const updateUserPassword = async (passwordData) => {
   try {

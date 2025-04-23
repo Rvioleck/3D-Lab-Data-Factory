@@ -24,15 +24,10 @@ public class ReconstructionTask implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 主键，自增
+     * 主键，雪花ID，同时作为任务唯一标识符
      */
     @TableId(type = IdType.ASSIGN_ID)
     private Long id;
-
-    /**
-     * 任务唯一标识符
-     */
-    private String taskId;
 
     /**
      * 任务状态（PENDING/PROCESSING/COMPLETED/FAILED）
@@ -43,26 +38,6 @@ public class ReconstructionTask implements Serializable {
      * 源图片ID
      */
     private Long sourceImageId;
-
-    /**
-     * 原始图片URL
-     */
-    private String originalImageUrl;
-
-    /**
-     * 像素图像URL
-     */
-    private String pixelImagesUrl;
-
-    /**
-     * XYZ图像URL
-     */
-    private String xyzImagesUrl;
-
-    /**
-     * 输出ZIP包URL
-     */
-    private String outputZipUrl;
 
     /**
      * 结果模型ID

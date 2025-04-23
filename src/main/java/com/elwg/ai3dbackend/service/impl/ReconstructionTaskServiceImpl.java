@@ -12,7 +12,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
-import java.util.UUID;
 
 /**
  * 3D重建任务服务实现类
@@ -32,29 +31,10 @@ public class ReconstructionTaskServiceImpl extends ServiceImpl<ReconstructionTas
     @Override
     @Transactional
     public ReconstructionTask createTask(Long userId, Long sourceImageId, String originalImageUrl) {
-        // 生成唯一的任务ID
-        String taskId = UUID.randomUUID().toString().replace("-", "");
-        return createTask(taskId, userId, sourceImageId, originalImageUrl);
-    }
-
-    /**
-     * 创建重建任务（指定任务ID）
-     *
-     * @param taskId 任务ID
-     * @param userId 用户ID
-     * @param sourceImageId 源图片ID
-     * @param originalImageUrl 原始图片URL
-     * @return 创建的任务
-     */
-    @Override
-    @Transactional
-    public ReconstructionTask createTask(String taskId, Long userId, Long sourceImageId, String originalImageUrl) {
         // 创建任务实体
         ReconstructionTask task = new ReconstructionTask();
-        task.setTaskId(taskId);
         task.setStatus(TaskStatus.PENDING);
         task.setSourceImageId(sourceImageId);
-        task.setOriginalImageUrl(originalImageUrl);
         task.setUserId(userId);
         task.setCreateTime(new Date());
         task.setUpdateTime(new Date());
@@ -62,7 +42,7 @@ public class ReconstructionTaskServiceImpl extends ServiceImpl<ReconstructionTas
 
         // 保存到数据库
         save(task);
-        log.info("Created reconstruction task: {}", taskId);
+        log.info("Created reconstruction task: {}", task.getId());
 
         return task;
     }
@@ -70,30 +50,28 @@ public class ReconstructionTaskServiceImpl extends ServiceImpl<ReconstructionTas
     /**
      * 根据任务ID查询任务
      *
-     * @param taskId 任务ID
+     * @param id 任务ID
      * @return 任务实体，如果不存在则返回null
      */
     @Override
-    public ReconstructionTask getTaskByTaskId(String taskId) {
-        LambdaQueryWrapper<ReconstructionTask> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(ReconstructionTask::getTaskId, taskId);
-        return getOne(queryWrapper);
+    public ReconstructionTask getTaskById(Long id) {
+        return getById(id);
     }
 
     /**
      * 更新任务状态
      *
-     * @param taskId 任务ID
+     * @param id 任务ID
      * @param status 新状态
      * @param errorMessage 错误信息（可选）
      * @return 更新后的任务
      */
     @Override
     @Transactional
-    public ReconstructionTask updateTaskStatus(String taskId, String status, String errorMessage) {
-        ReconstructionTask task = getTaskByTaskId(taskId);
+    public ReconstructionTask updateTaskStatus(Long id, String status, String errorMessage) {
+        ReconstructionTask task = getById(id);
         if (task == null) {
-            log.warn("Task not found: {}", taskId);
+            log.warn("Task not found: {}", id);
             return null;
         }
 
@@ -113,49 +91,7 @@ public class ReconstructionTaskServiceImpl extends ServiceImpl<ReconstructionTas
 
         // 更新到数据库
         updateById(task);
-        log.info("Updated task status: {} -> {}", taskId, status);
-
-        return task;
-    }
-
-    /**
-     * 更新任务结果文件URL
-     *
-     * @param taskId 任务ID
-     * @param fileType 文件类型（pixel_images, xyz_images, output_zip）
-     * @param fileUrl 文件URL
-     * @return 更新后的任务
-     */
-    @Override
-    @Transactional
-    public ReconstructionTask updateTaskResultFile(String taskId, String fileType, String fileUrl) {
-        ReconstructionTask task = getTaskByTaskId(taskId);
-        if (task == null) {
-            log.warn("Task not found: {}", taskId);
-            return null;
-        }
-
-        // 根据文件类型更新相应的URL
-        switch (fileType) {
-            case "pixel_images":
-                task.setPixelImagesUrl(fileUrl);
-                break;
-            case "xyz_images":
-                task.setXyzImagesUrl(fileUrl);
-                break;
-            case "output_zip":
-                task.setOutputZipUrl(fileUrl);
-                break;
-            default:
-                log.warn("Unknown file type: {}", fileType);
-                return task;
-        }
-
-        task.setUpdateTime(new Date());
-
-        // 更新到数据库
-        updateById(task);
-        log.info("Updated task result file: {} -> {}: {}", taskId, fileType, fileUrl);
+        log.info("Updated task status: {} -> {}", id, status);
 
         return task;
     }
@@ -163,16 +99,16 @@ public class ReconstructionTaskServiceImpl extends ServiceImpl<ReconstructionTas
     /**
      * 更新任务结果模型ID
      *
-     * @param taskId 任务ID
+     * @param id 任务ID
      * @param modelId 模型ID
      * @return 更新后的任务
      */
     @Override
     @Transactional
-    public ReconstructionTask updateTaskResultModel(String taskId, Long modelId) {
-        ReconstructionTask task = getTaskByTaskId(taskId);
+    public ReconstructionTask updateTaskResultModel(Long id, Long modelId) {
+        ReconstructionTask task = getById(id);
         if (task == null) {
-            log.warn("Task not found: {}", taskId);
+            log.warn("Task not found: {}", id);
             return null;
         }
 
@@ -181,7 +117,7 @@ public class ReconstructionTaskServiceImpl extends ServiceImpl<ReconstructionTas
 
         // 更新到数据库
         updateById(task);
-        log.info("Updated task result model: {} -> {}", taskId, modelId);
+        log.info("Updated task result model: {} -> {}", id, modelId);
 
         return task;
     }
@@ -189,16 +125,16 @@ public class ReconstructionTaskServiceImpl extends ServiceImpl<ReconstructionTas
     /**
      * 更新任务处理时间
      *
-     * @param taskId 任务ID
+     * @param id 任务ID
      * @param processingTime 处理时间（秒）
      * @return 更新后的任务
      */
     @Override
     @Transactional
-    public ReconstructionTask updateTaskProcessingTime(String taskId, Integer processingTime) {
-        ReconstructionTask task = getTaskByTaskId(taskId);
+    public ReconstructionTask updateTaskProcessingTime(Long id, Integer processingTime) {
+        ReconstructionTask task = getById(id);
         if (task == null) {
-            log.warn("Task not found: {}", taskId);
+            log.warn("Task not found: {}", id);
             return null;
         }
 
@@ -207,7 +143,7 @@ public class ReconstructionTaskServiceImpl extends ServiceImpl<ReconstructionTas
 
         // 更新到数据库
         updateById(task);
-        log.info("Updated task processing time: {} -> {} seconds", taskId, processingTime);
+        log.info("Updated task processing time: {} -> {} seconds", id, processingTime);
 
         return task;
     }
@@ -240,15 +176,15 @@ public class ReconstructionTaskServiceImpl extends ServiceImpl<ReconstructionTas
     /**
      * 删除任务
      *
-     * @param taskId 任务ID
+     * @param id 任务ID
      * @return 是否删除成功
      */
     @Override
     @Transactional
-    public boolean deleteTask(String taskId) {
-        ReconstructionTask task = getTaskByTaskId(taskId);
+    public boolean deleteTask(Long id) {
+        ReconstructionTask task = getById(id);
         if (task == null) {
-            log.warn("Task not found: {}", taskId);
+            log.warn("Task not found: {}", id);
             return false;
         }
 
@@ -259,9 +195,9 @@ public class ReconstructionTaskServiceImpl extends ServiceImpl<ReconstructionTas
         // 更新到数据库
         boolean result = updateById(task);
         if (result) {
-            log.info("Deleted task: {}", taskId);
+            log.info("Deleted task: {}", id);
         } else {
-            log.warn("Failed to delete task: {}", taskId);
+            log.warn("Failed to delete task: {}", id);
         }
 
         return result;
