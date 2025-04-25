@@ -13,7 +13,7 @@ import com.elwg.ai3dbackend.model.entity.User;
 import com.elwg.ai3dbackend.model.vo.UserDetailVO;
 import com.elwg.ai3dbackend.model.vo.UserVO;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 
 /**

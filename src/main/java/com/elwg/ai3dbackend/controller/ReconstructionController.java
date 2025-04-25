@@ -14,8 +14,8 @@ import com.elwg.ai3dbackend.model.entity.Picture;
 import com.elwg.ai3dbackend.model.entity.ReconstructionTask;
 import com.elwg.ai3dbackend.model.entity.User;
 import com.elwg.ai3dbackend.service.*;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,15 +26,14 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import javax.annotation.Resource;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 /**
  * 3D重建控制器
@@ -44,7 +43,7 @@ import java.util.UUID;
  */
 @RestController
 @RequestMapping("/reconstruction")
-@Api(tags = "3D重建接口", description = "提供3D重建相关的功能，包括上传图片和获取重建结果")
+@Tag(name = "3D重建接口", description = "提供3D重建相关的功能，包括上传图片和获取重建结果")
 @Slf4j
 public class ReconstructionController {
 
@@ -85,7 +84,7 @@ public class ReconstructionController {
      * @return 任务ID和SSE URL
      */
     @PostMapping("/create")
-    @ApiOperation(value = "创建3D重建任务", notes = "使用已上传的图片创建3D重建任务，返回任务ID和SSE URL")
+    @Operation(summary = "创建3D重建任务", description = "使用已上传的图片创建3D重建任务，返回任务ID和SSE URL")
     @AuthCheck(mustRole = "admin")
     public BaseResponse<ReconstructionUploadResponse> createReconstructionTask(
             @RequestParam("imageId") Long imageId,
@@ -147,7 +146,7 @@ public class ReconstructionController {
      * @return SSE发射器
      */
     @GetMapping("/events/{id}")
-    @ApiOperation(value = "SSE事件流", notes = "建立SSE连接，接收任务状态和结果更新")
+    @Operation(summary = "SSE事件流", description = "建立SSE连接，接收任务状态和结果更新")
     public SseEmitter events(@PathVariable Long id) {
         log.info("Creating SSE connection for task: {}", id);
 
@@ -216,7 +215,7 @@ public class ReconstructionController {
      * @return 任务状态和结果
      */
     @GetMapping("/status/{id}")
-    @ApiOperation(value = "获取任务状态", notes = "获取指定任务的状态和结果")
+    @Operation(summary = "获取任务状态", description = "获取指定任务的状态和结果")
     public BaseResponse<ReconstructionTaskDTO> getTaskStatus(@PathVariable Long id) {
         log.info("Getting status for task: {}", id);
 
@@ -255,7 +254,7 @@ public class ReconstructionController {
      * @return 任务列表
      */
     @GetMapping("/tasks")
-    @ApiOperation(value = "获取任务列表", notes = "分页获取当前用户的任务列表")
+    @Operation(summary = "获取任务列表", description = "分页获取当前用户的任务列表")
     @AuthCheck(mustRole = "admin")
     public BaseResponse<Map<String, Object>> getTasks(
             @RequestParam(value = "status", required = false) String status,
@@ -294,7 +293,7 @@ public class ReconstructionController {
      * @return 重定向到文件URL的响应
      */
     @GetMapping("/files/{id}/{fileName}")
-    @ApiOperation(value = "获取重建结果文件URL", notes = "根据任务ID和文件名获取3D重建的结果文件URL")
+    @Operation(summary = "获取重建结果文件URL", description = "根据任务ID和文件名获取3D重建的结果文件URL")
     public ResponseEntity<Void> getResultFile(@PathVariable Long id, @PathVariable String fileName) {
         // 检查任务ID和文件名是否存在
         ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR, "任务ID不合法");
@@ -390,7 +389,7 @@ public class ReconstructionController {
      * @return 重定向到文件URL的响应
      */
     @GetMapping("/preview")
-    @ApiOperation(value = "获取文件URL", notes = "根据文件路径获取文件URL，主要用于图片预览")
+    @Operation(summary = "获取文件URL", description = "根据文件路径获取文件URL，主要用于图片预览")
     public ResponseEntity<Void> getFileContent(@RequestParam("path") String filePath) {
         // 检查路径是否存在
         ThrowUtils.throwIf(filePath == null || filePath.isEmpty(), ErrorCode.PARAMS_ERROR, "文件路径不能为空");

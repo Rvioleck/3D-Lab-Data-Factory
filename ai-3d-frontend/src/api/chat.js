@@ -1,15 +1,7 @@
 import axios from 'axios'
+import { apiClient } from './apiClient'
 
 const API_URL = '/api'
-
-// 创建axios实例
-const apiClient = axios.create({
-  baseURL: API_URL,
-  withCredentials: true, // 允许跨域请求携带cookie
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
 
 // 创建会话
 export const createSession = async (sessionName) => {

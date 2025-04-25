@@ -74,7 +74,7 @@
 
 <script>
 import { ref, onMounted, computed } from 'vue'
-import { useStore } from 'vuex'
+import { useStore } from '@/utils/storeCompat'
 
 // 导入资源API
 // import { getResourceStats } from '@/api/resource'

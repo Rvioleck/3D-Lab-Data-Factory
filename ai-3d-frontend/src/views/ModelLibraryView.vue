@@ -183,7 +183,7 @@
 
 <script>
 import { ref, computed, onMounted } from 'vue'
-import { useStore } from 'vuex'
+import { useStore } from '@/utils/storeCompat'
 import { useRouter } from 'vue-router'
 import debounce from 'lodash/debounce'
 import { listModelsByPage, getModelCategories, deleteModel } from '@/api/model'

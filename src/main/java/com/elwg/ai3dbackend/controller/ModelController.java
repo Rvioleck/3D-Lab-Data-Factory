@@ -19,14 +19,14 @@ import com.elwg.ai3dbackend.model.vo.ModelVO;
 import com.elwg.ai3dbackend.service.ModelService;
 import com.elwg.ai3dbackend.service.PictureService;
 import com.elwg.ai3dbackend.service.UserService;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
 
-import javax.annotation.Resource;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
  */
 @RestController
 @RequestMapping("/model")
-@Api(tags = "3D模型接口", description = "提供3D模型管理相关的功能")
+@Tag(name = "3D模型接口", description = "提供3D模型管理相关的功能")
 @Slf4j
 public class ModelController {
 
@@ -61,7 +61,7 @@ public class ModelController {
      * @return 模型详情
      */
     @GetMapping("/{id}")
-    @ApiOperation(value = "获取模型详情", notes = "根据模型ID获取模型详细信息")
+    @Operation(summary = "获取模型详情", description = "根据模型ID获取模型详细信息")
     public BaseResponse<ModelVO> getModelById(@PathVariable Long id) {
         // 校验参数
         ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR, "模型ID不合法");
@@ -88,7 +88,7 @@ public class ModelController {
      * @return 分页模型列表
      */
     @PostMapping("/list/page")
-    @ApiOperation(value = "分页获取模型列表", notes = "根据条件分页获取模型列表")
+    @Operation(summary = "分页获取模型列表", description = "根据条件分页获取模型列表")
     public BaseResponse<Page<ModelVO>> listModelByPage(@RequestBody ModelQueryRequest modelQueryRequest) {
         long current = modelQueryRequest.getCurrent();
         long size = modelQueryRequest.getPageSize();
@@ -158,7 +158,7 @@ public class ModelController {
      * @return 更新结果
      */
     @PostMapping("/update")
-    @ApiOperation(value = "更新模型信息", notes = "更新模型的名称、简介、分类、标签等信息")
+    @Operation(summary = "更新模型信息", description = "更新模型的名称、简介、分类、标签等信息")
     @AuthCheck(mustRole = UserConstant.USER_ROLE)
     public BaseResponse<Boolean> updateModel(@RequestBody ModelUpdateRequest modelUpdateRequest, HttpServletRequest request) {
         // 校验参数
@@ -197,7 +197,7 @@ public class ModelController {
      * @return 删除结果
      */
     @PostMapping("/delete")
-    @ApiOperation(value = "删除模型", notes = "删除指定ID的模型")
+    @Operation(summary = "删除模型", description = "删除指定ID的模型")
     @AuthCheck(mustRole = UserConstant.USER_ROLE)
     public BaseResponse<Boolean> deleteModel(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
         // 校验参数
@@ -232,7 +232,7 @@ public class ModelController {
      * @return 分类列表
      */
     @GetMapping("/categories")
-    @ApiOperation(value = "获取模型分类列表", notes = "获取系统中所有的模型分类")
+    @Operation(summary = "获取模型分类列表", description = "获取系统中所有的模型分类")
     public BaseResponse<List<String>> getModelCategories() {
         // 查询所有不为空的分类
         LambdaQueryWrapper<Model> queryWrapper = new LambdaQueryWrapper<>();
@@ -259,7 +259,7 @@ public class ModelController {
      * @return 模型信息列表
      */
     @PostMapping("/batch")
-    @ApiOperation(value = "批量获取模型信息", notes = "根据ID列表批量获取模型信息")
+    @Operation(summary = "批量获取模型信息", description = "根据ID列表批量获取模型信息")
     public BaseResponse<List<ModelVO>> batchGetModelByIds(@RequestBody List<Long> ids) {
         // 校验参数
         ThrowUtils.throwIf(ids == null || ids.isEmpty(), ErrorCode.PARAMS_ERROR);

@@ -12,11 +12,11 @@ import java.util.Arrays;
 import java.util.Collections;
 
 /**
- * DeepSeek API 配置类
+ * DeepSeek API HTTP客户端配置类
  * 提供OkHttpClient实例用于调用DeepSeek API
  */
 @Configuration
-public class DeepSeekConfig {
+public class DeepSeekHttpClientConfig {
 
     @Value("${deepseek.api.connect-timeout:30}")
     private int connectTimeout;
@@ -31,8 +31,8 @@ public class DeepSeekConfig {
      * 创建OkHttpClient实例
      * 用于调用DeepSeek API
      */
-    @Bean
-    public OkHttpClient okHttpClient() {
+    @Bean(name = "deepSeekOkHttpClient")
+    public OkHttpClient deepSeekOkHttpClient() {
         return new OkHttpClient.Builder()
                 .connectTimeout(Duration.ofSeconds(connectTimeout))
                 .readTimeout(Duration.ofSeconds(readTimeout))

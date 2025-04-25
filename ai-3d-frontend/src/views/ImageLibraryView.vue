@@ -259,7 +259,7 @@
 
 <script>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useStore } from 'vuex'
+import { useStore } from '@/utils/storeCompat'
 import { useRouter } from 'vue-router'
 import { Modal } from 'bootstrap'
 import debounce from 'lodash/debounce'

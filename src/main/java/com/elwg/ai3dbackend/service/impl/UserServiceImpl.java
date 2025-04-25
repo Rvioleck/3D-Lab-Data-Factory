@@ -25,8 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
-import javax.annotation.Resource;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -45,7 +44,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      * 包括参数校验、账号查重、密码加密和用户创建
      *
      * @param userAccount   用户账号，长度至少为4
-     * @param userPassword  用户密码，长度至少为8
+     * @param userPassword  用户密码，长度至少为6
      * @param checkPassword 确认密码，必须与用户密码一致
      * @return 新用户的ID
      * @throws BusinessException 参数错误或账号重复时抛出异常
@@ -57,7 +56,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 ErrorCode.PARAMS_ERROR, "参数为空");
         ThrowUtils.throwIf(userAccount.length() < 4,
                 ErrorCode.PARAMS_ERROR, "用户账号");
-        ThrowUtils.throwIf(userPassword.length() < 8 || checkPassword.length() < 8,
+        ThrowUtils.throwIf(userPassword.length() < 6 || checkPassword.length() < 6,
                 ErrorCode.PARAMS_ERROR, "用户密码过短");
         ThrowUtils.throwIf(!userPassword.equals(checkPassword),
                 ErrorCode.PARAMS_ERROR, "两次输入的密码不一致");
@@ -506,9 +505,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         ThrowUtils.throwIf(userAccount.length() < 4,
                 ErrorCode.PARAMS_ERROR, "用户账号长度不能小于4");
 
-        // 密码长度不能小于8
-        ThrowUtils.throwIf(userPassword.length() < 8,
-                ErrorCode.PARAMS_ERROR, "用户密码长度不能小于8");
+        // 密码长度不能小于6
+        ThrowUtils.throwIf(userPassword.length() < 6,
+                ErrorCode.PARAMS_ERROR, "用户密码长度不能小于6");
 
         // 两次输入的密码必须一致
         ThrowUtils.throwIf(!userPassword.equals(checkPassword),
@@ -573,7 +572,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 校验密码
         String userPassword = userUpdateRequest.getUserPassword();
         if (StrUtil.isNotBlank(userPassword)) {
-            ThrowUtils.throwIf(userPassword.length() < 8, ErrorCode.PARAMS_ERROR, "密码长度不能小于8");
+            ThrowUtils.throwIf(userPassword.length() < 6, ErrorCode.PARAMS_ERROR, "密码长度不能小于6");
         }
     }
 
@@ -637,7 +636,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 ErrorCode.PARAMS_ERROR, "密码参数不能为空");
 
         // 校验新密码长度
-        ThrowUtils.throwIf(newPassword.length() < 8, ErrorCode.PARAMS_ERROR, "新密码长度不能小于8");
+        ThrowUtils.throwIf(newPassword.length() < 6, ErrorCode.PARAMS_ERROR, "新密码长度不能小于6");
 
         // 校验两次输入的新密码是否一致
         ThrowUtils.throwIf(!newPassword.equals(checkPassword), ErrorCode.PARAMS_ERROR, "两次输入的新密码不一致");

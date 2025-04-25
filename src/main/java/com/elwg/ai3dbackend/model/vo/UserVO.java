@@ -1,7 +1,6 @@
 package com.elwg.ai3dbackend.model.vo;
 
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -14,7 +13,7 @@ import java.util.Date;
  * </p>
  */
 @Data
-@ApiModel(value = "UserVO", description = "用户视图对象")
+@Schema(name = "UserVO", description = "用户视图对象")
 public class UserVO implements Serializable {
 
     /**
@@ -25,48 +24,48 @@ public class UserVO implements Serializable {
     /**
      * 用户ID
      */
-    @ApiModelProperty(value = "用户ID", example = "1234567890123456789")
+    @Schema(description = "用户ID", example = "1234567890123456789")
     private Long id;
 
     /**
      * 用户账号
      */
-    @ApiModelProperty(value = "用户账号", example = "zhangsan")
+    @Schema(description = "用户账号", example = "zhangsan")
     private String userAccount;
 
     /**
      * 用户名
      */
-    @ApiModelProperty(value = "用户名", example = "张三")
+    @Schema(description = "用户名", example = "张三")
     private String userName;
 
     /**
      * 用户头像URL
      */
-    @ApiModelProperty(value = "用户头像URL", example = "https://example.com/avatar.jpg")
+    @Schema(description = "用户头像URL", example = "https://example.com/avatar.jpg")
     private String userAvatar;
 
     /**
      * 用户简介
      */
-    @ApiModelProperty(value = "用户简介", example = "这是一个用户简介")
+    @Schema(description = "用户简介", example = "这是一个用户简介")
     private String userProfile;
 
     /**
      * 用户角色：user/admin/ban
      */
-    @ApiModelProperty(value = "用户角色", example = "user", notes = "可选值：user（普通用户）、admin（管理员）、ban（已封禁）")
+    @Schema(description = "用户角色", example = "user", allowableValues = {"user", "admin", "ban"}, implementation = String.class)
     private String userRole;
 
     /**
      * 创建时间
      */
-    @ApiModelProperty(value = "创建时间", example = "2023-01-01 12:00:00")
+    @Schema(description = "创建时间", example = "2023-01-01 12:00:00")
     private Date createTime;
 
     /**
      * 更新时间
      */
-    @ApiModelProperty(value = "更新时间", example = "2023-01-01 12:00:00")
+    @Schema(description = "更新时间", example = "2023-01-01 12:00:00")
     private Date updateTime;
 }

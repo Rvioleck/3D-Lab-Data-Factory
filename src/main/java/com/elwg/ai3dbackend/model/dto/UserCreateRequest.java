@@ -1,7 +1,6 @@
 package com.elwg.ai3dbackend.model.dto;
 
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -13,7 +12,7 @@ import java.io.Serializable;
  * </p>
  */
 @Data
-@ApiModel(value = "UserCreateRequest", description = "用户创建请求")
+@Schema(name = "UserCreateRequest", description = "用户创建请求")
 public class UserCreateRequest implements Serializable {
 
     /**
@@ -24,42 +23,42 @@ public class UserCreateRequest implements Serializable {
     /**
      * 用户账号
      */
-    @ApiModelProperty(value = "用户账号", required = true, example = "zhangsan")
+    @Schema(description = "用户账号", requiredMode = Schema.RequiredMode.REQUIRED, example = "zhangsan")
     private String userAccount;
 
     /**
      * 用户密码
      */
-    @ApiModelProperty(value = "用户密码", required = true, example = "12345678")
+    @Schema(description = "用户密码", requiredMode = Schema.RequiredMode.REQUIRED, example = "12345678")
     private String userPassword;
 
     /**
      * 确认密码
      */
-    @ApiModelProperty(value = "确认密码", required = true, example = "12345678")
+    @Schema(description = "确认密码", requiredMode = Schema.RequiredMode.REQUIRED, example = "12345678")
     private String checkPassword;
 
     /**
      * 用户名
      */
-    @ApiModelProperty(value = "用户名", example = "张三")
+    @Schema(description = "用户名", example = "张三")
     private String userName;
 
     /**
      * 用户头像URL
      */
-    @ApiModelProperty(value = "用户头像URL", example = "https://example.com/avatar.jpg")
+    @Schema(description = "用户头像URL", example = "https://example.com/avatar.jpg")
     private String userAvatar;
 
     /**
      * 用户简介
      */
-    @ApiModelProperty(value = "用户简介", example = "这是一个用户简介")
+    @Schema(description = "用户简介", example = "这是一个用户简介")
     private String userProfile;
 
     /**
      * 用户角色：user/admin/ban
      */
-    @ApiModelProperty(value = "用户角色", example = "user", notes = "可选值：user（普通用户）、admin（管理员）、ban（已封禁）")
+    @Schema(description = "用户角色", example = "user", allowableValues = {"user", "admin", "ban"}, implementation = String.class)
     private String userRole;
 }

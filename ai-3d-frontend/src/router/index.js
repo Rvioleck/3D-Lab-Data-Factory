@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import store from '../store'
+import { useUserStore } from '../stores/user'
 
+// Define routes
 const routes = [
   {
     path: '/',
@@ -9,24 +10,12 @@ const routes = [
   {
     path: '/home',
     name: 'Home',
-    component: () => import('../views/NewHomeView.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/classic-home',
-    name: 'ClassicHome',
     component: () => import('../views/HomeView.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/login',
     name: 'Login',
-    component: () => import('../views/auth/ModernLoginView.vue'),
-    meta: { requiresAuth: false }
-  },
-  {
-    path: '/classic-login',
-    name: 'ClassicLogin',
     component: () => import('../views/LoginView.vue'),
     meta: { requiresAuth: false }
   },
@@ -102,50 +91,49 @@ const router = createRouter({
   routes
 })
 
-// 导航守卫
+// Navigation guards
 router.beforeEach(async (to, from, next) => {
-  console.log('路由守卫: 从', from.path, '到', to.path)
+  // Get user store
+  const userStore = useUserStore()
 
-  // 检查用户登录状态
-  const isLoggedIn = store.getters['user/isLoggedIn']
+  // Check login status
+  const isLoggedIn = userStore.isLoggedIn
   const hasToken = !!localStorage.getItem('token')
 
-  console.log('当前登录状态:', isLoggedIn ? '已登录' : '未登录', 'Token状态:', hasToken ? '存在' : '不存在')
-
-  // 如果有token但没有用户信息，尝试获取用户信息
+  // If has token but not logged in, try to fetch user info
   if (hasToken && !isLoggedIn) {
     try {
-      console.log('有token但没有用户信息，尝试获取用户信息')
-      await store.dispatch('user/fetchCurrentUser')
-      // 重新检查登录状态
-      const updatedLoginStatus = store.getters['user/isLoggedIn']
-      console.log('获取用户信息后的登录状态:', updatedLoginStatus ? '已登录' : '未登录')
+      await userStore.fetchCurrentUser()
     } catch (error) {
-      console.error('获取用户信息失败:', error)
+      // Clear token on error
       localStorage.removeItem('token')
     }
   }
 
-  // 重新获取登录状态（可能已经更新）
-  const finalLoginStatus = store.getters['user/isLoggedIn']
-  const isAdmin = store.getters['user/isAdmin']
+  // Get final login status
+  const finalLoginStatus = userStore.isLoggedIn
+  const isAdmin = userStore.isAdmin
 
-  // 如果需要登录但用户未登录，重定向到登录页面
+  // Handle route access based on auth requirements
   if (to.meta.requiresAuth && !finalLoginStatus) {
-    console.log('页面需要登录权限但用户未登录，重定向到登录页面')
+    // Redirect to login if auth required but not logged in
     next('/login')
-  }
-  // 如果需要管理员权限但用户不是管理员，重定向到首页
-  else if (to.meta.requiresAdmin && !isAdmin) {
-    console.log('页面需要管理员权限但用户不是管理员，重定向到首页')
+    // Show toast notification
+    if (window.$toast) {
+      window.$toast.warning('Please log in to access this page')
+    }
+  } else if (to.meta.requiresAdmin && !isAdmin) {
+    // Redirect to home if admin required but not admin
     next('/home')
-  }
-  // 如果用户已登录但访问登录页面，重定向到主页
-  else if (finalLoginStatus && (to.path === '/login' || to.path === '/register')) {
-    console.log('用户已登录但访问登录/注册页面，重定向到主页')
+    // Show toast notification
+    if (window.$toast) {
+      window.$toast.warning('Admin access required')
+    }
+  } else if (finalLoginStatus && (to.path === '/login' || to.path === '/register')) {
+    // Redirect to home if logged in but accessing login/register
     next('/home')
   } else {
-    console.log('允许访问页面:', to.path)
+    // Allow access
     next()
   }
 })

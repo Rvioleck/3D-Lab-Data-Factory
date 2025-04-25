@@ -13,15 +13,16 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     /**
      * 配置静态资源映射
-     * 
+     *
      * @param registry 资源处理器注册表
      */
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        // Knife4j 相关静态资源
+        // Knife4j 和 Swagger UI 相关静态资源
         registry.addResourceHandler("doc.html").addResourceLocations("classpath:/META-INF/resources/");
         registry.addResourceHandler("/webjars/**").addResourceLocations("classpath:/META-INF/resources/webjars/");
-        
+        registry.addResourceHandler("/swagger-ui/**").addResourceLocations("classpath:/META-INF/resources/webjars/swagger-ui/");
+
         // 其他静态资源
         registry.addResourceHandler("/static/**").addResourceLocations("classpath:/static/");
     }

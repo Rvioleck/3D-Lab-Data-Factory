@@ -8,14 +8,12 @@ import com.elwg.ai3dbackend.model.entity.ChatSession;
 import com.elwg.ai3dbackend.model.entity.ChatMessage;
 import com.elwg.ai3dbackend.service.ChatService;
 import com.elwg.ai3dbackend.service.UserService;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiImplicitParam;
-import io.swagger.annotations.ApiImplicitParams;
-import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.web.bind.annotation.*;
-import javax.annotation.Resource;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.ArrayList;
 import org.springframework.http.MediaType;
@@ -31,7 +29,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
  */
 @RestController
 @RequestMapping("/chat")
-@Api(tags = "AI对话接口", description = "提供AI对话相关的所有功能，包括会话管理和消息处理")
+@Tag(name = "AI对话接口", description = "提供AI对话相关的所有功能，包括会话管理和消息处理")
 @AuthCheck(mustRole = "admin") // 暂时只允许管理员访问聊天功能
 public class ChatController {
 
@@ -53,8 +51,7 @@ public class ChatController {
      * @return 包含新创建会话信息的响应对象，包括会话ID、名称、创建时间等
      */
     @PostMapping("/session")
-    @ApiOperation(value = "创建会话", notes = "创建一个新的对话会话，需要提供会话名称，返回创建的会话详情")
-    @ApiImplicitParam(name = "sessionName", value = "会话名称", required = true, dataType = "String", paramType = "query")
+    @Operation(summary = "创建会话", description = "创建一个新的对话会话，需要提供会话名称，返回创建的会话详情")
     public BaseResponse<ChatSession> createSession(@RequestParam String sessionName,
                                                  HttpServletRequest request) {
         Long userId = userService.getLoginUser(request).getId();
@@ -73,7 +70,7 @@ public class ChatController {
      * @return 包含用户会话列表的响应对象，列表可能为空（如果用户没有创建过会话）
      */
     @GetMapping("/session/list")
-    @ApiOperation(value = "获取会话列表", notes = "获取当前登录用户的所有对话会话，按创建时间倒序排列")
+    @Operation(summary = "获取会话列表", description = "获取当前登录用户的所有对话会话，按创建时间倒序排列")
     public BaseResponse<List<ChatSession>> listSessions(HttpServletRequest request) {
         Long userId = userService.getLoginUser(request).getId();
         List<ChatSession> sessions = chatService.listUserSessions(userId);
@@ -92,8 +89,7 @@ public class ChatController {
      * @return 包含会话消息历史的响应对象，按时间顺序排列的消息列表
      */
     @GetMapping("/message/{sessionId}")
-    @ApiOperation(value = "获取会话消息历史", notes = "获取指定会话的所有历史消息，按时间顺序排列")
-    @ApiImplicitParam(name = "sessionId", value = "会话ID", required = true, dataType = "String", paramType = "path")
+    @Operation(summary = "获取会话消息历史", description = "获取指定会话的所有历史消息，按时间顺序排列")
     public BaseResponse<List<ChatMessage>> listMessages(@PathVariable String sessionId) {
         try {
             Long sessionIdLong = Long.parseLong(sessionId);
@@ -121,7 +117,7 @@ public class ChatController {
      * @return 包含AI回复消息的响应对象，包括消息ID、内容、角色标识等
      */
     @PostMapping("/message")
-    @ApiOperation(value = "发送消息", notes = "发送消息并获取AI回复，支持自动创建新会话或在现有会话中继续对话")
+    @Operation(summary = "发送消息", description = "发送消息并获取AI回复，支持自动创建新会话或在现有会话中继续对话")
     public BaseResponse<ChatMessage> sendMessage(@RequestBody ChatRequest chatRequest, HttpServletRequest request) {
         // 获取用户ID
         Long userId = userService.getLoginUser(request).getId();
@@ -154,8 +150,7 @@ public class ChatController {
      * @return 包含删除结果的响应对象，删除成功返回true，否则返回false
      */
     @DeleteMapping("/session/{sessionId}")
-    @ApiOperation(value = "删除会话", notes = "删除指定的对话会话及其所有消息，操作不可恢复")
-    @ApiImplicitParam(name = "sessionId", value = "会话ID", required = true, dataType = "String", paramType = "path")
+    @Operation(summary = "删除会话", description = "删除指定的对话会话及其所有消息，操作不可恢复")
     public BaseResponse<Boolean> deleteSession(@PathVariable String sessionId) {
         try {
             Long sessionIdLong = Long.parseLong(sessionId);
@@ -184,8 +179,7 @@ public class ChatController {
      * @return 包含删除结果的响应对象，删除成功返回true，否则返回false
      */
     @DeleteMapping("/message/{messageId}")
-    @ApiOperation(value = "删除消息", notes = "删除指定的消息及其关联消息，需要用户拥有该消息的权限")
-    @ApiImplicitParam(name = "messageId", value = "消息ID", required = true, dataType = "String", paramType = "path")
+    @Operation(summary = "删除消息", description = "删除指定的消息及其关联消息，需要用户拥有该消息的权限")
     public BaseResponse<Boolean> deleteMessage(@PathVariable String messageId, HttpServletRequest request) {
         // 获取当前登录用户ID
         Long userId = userService.getLoginUser(request).getId();
@@ -223,7 +217,7 @@ public class ChatController {
      * @return SSE发射器，用于发送流式响应，客户端需要正确处理SSE事件
      */
     @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    @ApiOperation(value = "流式发送消息", notes = "流式发送消息并获取AI实时回复，支持自动创建会话，响应使用SSE格式，适合需要实时显示回复的场景")
+    @Operation(summary = "流式发送消息", description = "流式发送消息并获取AI实时回复，支持自动创建会话，响应使用SSE格式，适合需要实时显示回复的场景")
     public SseEmitter streamChat(@RequestBody ChatRequest chatRequest, HttpServletRequest request) {
         // 1. 验证用户登录状态
         Long userId = userService.getLoginUser(request).getId();

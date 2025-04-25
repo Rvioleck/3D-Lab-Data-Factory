@@ -224,12 +224,12 @@
 
 <script>
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
-import { useStore } from 'vuex'
-import ChatSession from '../components/ChatSession.vue'
-import ChatMessage from '../components/ChatMessage.vue'
-import StreamingResponse from '../components/StreamingResponse.vue'
-import NoPermission from '../components/NoPermission.vue'
-import SkeletonLoader from '../components/SkeletonLoader.vue'
+import { useStore } from '@/utils/storeCompat'
+import ChatSession from '../components/chat/ChatSession.vue'
+import ChatMessage from '../components/chat/ChatMessage.vue'
+import StreamingResponse from '../components/chat/StreamingResponse.vue'
+import NoPermission from '../components/shared/NoPermission.vue'
+import SkeletonLoader from '../components/shared/SkeletonLoader.vue'
 import { streamChat } from '../api/chat'
 import { debounce, throttle, optimizedScroll } from '../utils/performance'
 

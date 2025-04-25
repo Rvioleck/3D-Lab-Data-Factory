@@ -1,15 +1,4 @@
-import axios from 'axios'
-
-const API_URL = import.meta.env.VITE_API_URL || ''
-
-// 创建axios实例
-const apiClient = axios.create({
-  baseURL: API_URL,
-  withCredentials: true, // 允许跨域请求携带cookie
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
+import { apiClient } from './apiClient'
 
 /**
  * 获取模型详情

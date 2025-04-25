@@ -45,7 +45,7 @@ export function throttle(fn, limit = 300) {
  */
 export function optimizedScroll(callback) {
   let ticking = false;
-  
+
   return function(event) {
     if (!ticking) {
       window.requestAnimationFrame(() => {
@@ -83,7 +83,7 @@ export function createIntersectionObserver(selector, callback, options = {}) {
     rootMargin: '0px',
     threshold: 0.1
   };
-  
+
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
@@ -92,11 +92,11 @@ export function createIntersectionObserver(selector, callback, options = {}) {
       }
     });
   }, { ...defaultOptions, ...options });
-  
+
   document.querySelectorAll(selector).forEach(el => {
     observer.observe(el);
   });
-  
+
   return observer;
 }
 

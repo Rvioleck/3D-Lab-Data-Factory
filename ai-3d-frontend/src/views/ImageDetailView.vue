@@ -171,10 +171,10 @@
 
 <script>
 import { ref, computed, onMounted } from 'vue'
-import { useStore } from 'vuex'
+import { useStore } from '@/utils/storeCompat'
 import { useRouter, useRoute } from 'vue-router'
 import { Modal } from 'bootstrap'
-import { cleanupModals } from '@/utils/modalFix'
+import { cleanupModalState } from '@/utils/modalHelper'
 import {
   getPictureById,
   updatePicture,
@@ -346,7 +346,7 @@ export default {
       loadImageDetail()
 
       // 初始化时清除模态框背景
-      cleanupModals()
+      cleanupModalState()
     })
 
     return {

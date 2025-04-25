@@ -1,7 +1,6 @@
 package com.elwg.ai3dbackend.model.dto;
 
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -13,7 +12,7 @@ import java.io.Serializable;
  * </p>
  */
 @Data
-@ApiModel(value = "UserProfileUpdateRequest", description = "用户个人资料更新请求")
+@Schema(name = "UserProfileUpdateRequest", description = "用户个人资料更新请求")
 public class UserProfileUpdateRequest implements Serializable {
 
     /**
@@ -24,24 +23,24 @@ public class UserProfileUpdateRequest implements Serializable {
     /**
      * 用户账号
      */
-    @ApiModelProperty(value = "用户账号", example = "zhangsan")
+    @Schema(description = "用户账号", example = "zhangsan")
     private String userAccount;
 
     /**
      * 用户名
      */
-    @ApiModelProperty(value = "用户名", example = "张三")
+    @Schema(description = "用户名", example = "张三")
     private String userName;
 
     /**
      * 用户头像URL
      */
-    @ApiModelProperty(value = "用户头像URL", example = "https://example.com/avatar.jpg")
+    @Schema(description = "用户头像URL", example = "https://example.com/avatar.jpg")
     private String userAvatar;
 
     /**
      * 用户简介
      */
-    @ApiModelProperty(value = "用户简介", example = "这是一个用户简介")
+    @Schema(description = "用户简介", example = "这是一个用户简介")
     private String userProfile;
 }

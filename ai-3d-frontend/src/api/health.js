@@ -1,14 +1,4 @@
-import axios from 'axios'
-
-const API_URL = '/api'
-
-// 创建axios实例
-const apiClient = axios.create({
-  baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
+import { apiClient } from './apiClient'
 
 // 简单健康检查
 export const checkHealth = async () => {

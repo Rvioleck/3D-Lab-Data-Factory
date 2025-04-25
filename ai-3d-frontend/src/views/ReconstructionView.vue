@@ -283,11 +283,11 @@
 
 <script>
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
-import { useStore } from 'vuex'
+import { useStore } from '@/utils/storeCompat'
 import { useRoute, useRouter } from 'vue-router'
-import ModelViewer from '@/components/ModelViewer.vue'
-import ReconstructionStatus from '@/components/ReconstructionStatus.vue'
-import ResultFilesViewer from '@/components/ResultFilesViewer.vue'
+import ModelViewer from '@/components/model/ModelViewer.vue'
+import ReconstructionStatus from '@/components/model/ReconstructionStatus.vue'
+import ResultFilesViewer from '@/components/model/ResultFilesViewer.vue'
 import { getPictureById } from '@/api/picture'
 
 // 导入样式
@@ -374,7 +374,7 @@ export default {
       if (files.length > 0) {
         selectedFile.value = files[0]
         fileSelected.value = true
-        
+
         // 预填充模型名称
         const fileName = selectedFile.value.name.split('.')[0]
         modelName.value = `${fileName}模型`
@@ -387,7 +387,7 @@ export default {
       if (files.length > 0) {
         selectedFile.value = files[0]
         fileSelected.value = true
-        
+
         // 预填充模型名称
         const fileName = selectedFile.value.name.split('.')[0]
         modelName.value = `${fileName}模型`
@@ -427,10 +427,10 @@ export default {
 
         // 清空选择的文件
         removeSelectedFile()
-        
+
         // 切换到结果标签页（移动端）
         activeTab.value = 'result'
-        
+
         // 显示成功消息
         alert('重建任务创建成功！')
       } catch (error) {
@@ -455,10 +455,10 @@ export default {
 
         // 调用Vuex action创建任务
         await store.dispatch('reconstruction/createTaskFromImage', data)
-        
+
         // 切换到结果标签页（移动端）
         activeTab.value = 'result'
-        
+
         // 显示成功消息
         alert('重建任务创建成功！')
       } catch (error) {
@@ -480,7 +480,7 @@ export default {
     // 选择任务
     const selectTask = (task) => {
       store.dispatch('reconstruction/selectTask', task)
-      
+
       // 切换到结果标签页（移动端）
       activeTab.value = 'result'
     }
@@ -559,7 +559,7 @@ export default {
       if (sourceImageId.value) {
         loadSourceImage()
       }
-      
+
       // 加载任务列表
       loadTaskList()
     })
@@ -670,7 +670,7 @@ export default {
   .task-list-card {
     max-height: 300px;
   }
-  
+
   .model-viewer-large {
     height: 400px;
   }

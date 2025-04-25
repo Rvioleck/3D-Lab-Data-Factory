@@ -29,16 +29,16 @@ import com.elwg.ai3dbackend.model.enums.UserRoleEnum;
 import com.elwg.ai3dbackend.model.vo.UserDetailVO;
 import com.elwg.ai3dbackend.model.vo.UserVO;
 import com.elwg.ai3dbackend.service.UserService;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.List;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
-import javax.annotation.Resource;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * 用户接口
@@ -51,7 +51,7 @@ import javax.servlet.http.HttpServletRequest;
  */
 @RestController
 @RequestMapping("/user")
-@Api(tags = "用户接口", description = "提供用户注册、登录和获取用户信息等功能")
+@Tag(name = "用户接口", description = "提供用户注册、登录和获取用户信息等功能")
 @Slf4j
 public class UserController {
 
@@ -77,7 +77,7 @@ public class UserController {
      * @throws BusinessException 参数错误或账号已存在时抛出业务异常
      */
     @PostMapping("/register")
-    @ApiOperation(value = "用户注册", notes = "注册新用户，需要提供账号、密码和确认密码")
+    @Operation(summary = "用户注册", description = "注册新用户，需要提供账号、密码和确认密码")
     public BaseResponse<Long> userRegister(@RequestBody UserRegisterRequest userRegisterRequest) {
         ThrowUtils.throwIf(userRegisterRequest == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
         String userAccount = userRegisterRequest.getUserAccount();
@@ -105,7 +105,7 @@ public class UserController {
      * @throws BusinessException 参数错误、账号不存在或密码错误时抛出业务异常
      */
     @PostMapping("/login")
-    @ApiOperation(value = "用户登录", notes = "验证用户身份并创建会话，返回脱敏的用户信息")
+    @Operation(summary = "用户登录", description = "验证用户身份并创建会话，返回脱敏的用户信息")
     public BaseResponse<UserVO> userLogin(@RequestBody UserLoginRequest userLoginRequest,
                                           HttpServletRequest request) {
         ThrowUtils.throwIf(userLoginRequest == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
@@ -132,7 +132,7 @@ public class UserController {
      * @throws BusinessException 用户未登录时抛出业务异常
      */
     @PostMapping("/get/login")
-    @ApiOperation(value = "获取当前登录用户信息", notes = "从当前会话中获取登录用户信息，用户未登录时会返回错误")
+    @Operation(summary = "获取当前登录用户信息", description = "从当前会话中获取登录用户信息，用户未登录时会返回错误")
     public BaseResponse<UserVO> getLoginUser(HttpServletRequest request) {
         User user = userService.getLoginUser(request);
         // 转换为 UserVO
@@ -151,7 +151,7 @@ public class UserController {
      * @return 包含退出结果的响应对象，成功时返回 true
      */
     @PostMapping("/logout")
-    @ApiOperation(value = "用户退出", notes = "清除用户登录状态，实现退出功能")
+    @Operation(summary = "用户退出", description = "清除用户登录状态，实现退出功能")
     public BaseResponse<Boolean> userLogout(HttpServletRequest request) {
         boolean result = userService.userLogout(request);
         return ResultUtils.success(result);
@@ -169,7 +169,7 @@ public class UserController {
      * @return 包含新用户ID的响应对象
      */
     @PostMapping("/create")
-    @ApiOperation(value = "创建用户", notes = "仅管理员可访问")
+    @Operation(summary = "创建用户", description = "仅管理员可访问")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Long> createUser(@RequestBody UserCreateRequest userCreateRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(userCreateRequest == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
@@ -189,7 +189,7 @@ public class UserController {
      * @return 包含删除结果的响应对象
      */
     @PostMapping("/delete")
-    @ApiOperation(value = "删除用户", notes = "仅管理员可访问")
+    @Operation(summary = "删除用户", description = "仅管理员可访问")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> deleteUser(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(deleteRequest == null || deleteRequest.getId() == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
@@ -209,7 +209,7 @@ public class UserController {
      * @return 包含更新结果的响应对象
      */
     @PostMapping("/update")
-    @ApiOperation(value = "更新用户", notes = "仅管理员可访问")
+    @Operation(summary = "更新用户", description = "仅管理员可访问")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> updateUser(@RequestBody UserUpdateRequest userUpdateRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(userUpdateRequest == null || userUpdateRequest.getId() == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
@@ -228,7 +228,7 @@ public class UserController {
      * @return 包含用户基本信息的响应对象
      */
     @PostMapping("/get")
-    @ApiOperation(value = "根据ID获取用户基本信息", notes = "仅管理员可访问")
+    @Operation(summary = "根据ID获取用户基本信息", description = "仅管理员可访问")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<UserVO> getUserById(@RequestBody GetRequest getRequest) {
         // 参数校验
@@ -254,7 +254,7 @@ public class UserController {
      * @return 包含用户详细信息的响应对象
      */
     @PostMapping("/detail")
-    @ApiOperation(value = "根据ID获取用户详细信息", notes = "仅管理员可访问")
+    @Operation(summary = "根据ID获取用户详细信息", description = "仅管理员可访问")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<UserDetailVO> getUserDetailById(@RequestBody GetRequest getRequest) {
         // 参数校验
@@ -280,7 +280,7 @@ public class UserController {
      * @return 包含分页用户列表的响应对象
      */
     @PostMapping("/list/page")
-    @ApiOperation(value = "分页获取用户列表", notes = "仅管理员可访问")
+    @Operation(summary = "分页获取用户列表", description = "仅管理员可访问")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Page<UserVO>> listUserByPage(@RequestBody UserQueryRequest userQueryRequest) {
         // 参数校验
@@ -322,7 +322,7 @@ public class UserController {
      * @return 包含所有用户信息的响应对象
      */
     @PostMapping("/list")
-    @ApiOperation(value = "获取所有用户信息", notes = "仅管理员可访问")
+    @Operation(summary = "获取所有用户信息", description = "仅管理员可访问")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<List<UserVO>> listUsers() {
         List<UserVO> userVOList = userService.listAllUsers();
@@ -341,7 +341,7 @@ public class UserController {
      * @return 包含更新后的用户信息的响应对象
      */
     @PostMapping("/profile/update")
-    @ApiOperation(value = "更新个人资料", notes = "更新当前登录用户的个人资料")
+    @Operation(summary = "更新个人资料", description = "更新当前登录用户的个人资料")
     public BaseResponse<UserVO> updateUserProfile(@RequestBody UserProfileUpdateRequest profileUpdateRequest,
                                                  HttpServletRequest request) {
         ThrowUtils.throwIf(profileUpdateRequest == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
@@ -361,7 +361,7 @@ public class UserController {
      * @return 包含头像URL的响应对象
      */
     @PostMapping("/avatar/upload")
-    @ApiOperation(value = "上传用户头像", notes = "上传当前登录用户的头像图片")
+    @Operation(summary = "上传用户头像", description = "上传当前登录用户的头像图片")
     @AuthCheck(mustRole = UserConstant.USER_ROLE)
     public BaseResponse<String> uploadAvatar(@RequestParam("file") MultipartFile file, HttpServletRequest request) {
         // 获取当前登录用户 - 通过AuthCheck注解已经确保用户已登录
@@ -446,7 +446,7 @@ public class UserController {
      * @return 包含修改结果的响应对象
      */
     @PostMapping("/password/update")
-    @ApiOperation(value = "修改密码", notes = "修改当前登录用户的密码")
+    @Operation(summary = "修改密码", description = "修改当前登录用户的密码")
     public BaseResponse<Boolean> updateUserPassword(@RequestBody UserPasswordUpdateRequest passwordUpdateRequest,
                                                   HttpServletRequest request) {
         ThrowUtils.throwIf(passwordUpdateRequest == null, ErrorCode.PARAMS_ERROR, "请求参数为空");

@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -42,7 +42,7 @@ public class DeepSeekService {
     @Value("${deepseek.api.max-tokens:2048}")
     private int maxTokens;
 
-    @Resource
+    @Resource(name = "deepSeekOkHttpClient")
     private OkHttpClient okHttpClient;
 
     @Resource

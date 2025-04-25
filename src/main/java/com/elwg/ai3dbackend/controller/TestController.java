@@ -2,11 +2,9 @@ package com.elwg.ai3dbackend.controller;
 
 import com.elwg.ai3dbackend.common.BaseResponse;
 import com.elwg.ai3dbackend.common.ResultUtils;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,7 +22,7 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/test")
-@Api(tags = "测试接口", description = "提供各种测试功能，仅用于开发和测试环境")
+@Tag(name = "测试接口", description = "提供各种测试功能，仅用于开发和测试环境")
 public class TestController {
 
     /**
@@ -45,7 +43,7 @@ public class TestController {
      * @return 包含各种类型ID的测试响应
      */
     @GetMapping("/long-serialization")
-    @ApiOperation(value = "测试Long类型序列化", notes = "返回包含各种类型ID的对象，用于测试前端处理大数值")
+    @Operation(summary = "测试Long类型序列化", description = "返回包含各种类型ID的对象，用于测试前端处理大数值")
     public BaseResponse<Map<String, Object>> testLongSerialization() {
         Map<String, Object> result = new HashMap<>();
 
@@ -72,12 +70,12 @@ public class TestController {
      * </p>
      */
     @Data
-    @ApiModel(value = "测试对象", description = "用于测试的简单对象，包含ID和名称")
+    @Schema(name = "测试对象", description = "用于测试的简单对象，包含ID和名称")
     public static class TestObject {
-        @ApiModelProperty(value = "ID", example = "567890123456789", notes = "测试用的Long类型ID，可能超过JavaScript数字精度限制")
+        @Schema(description = "ID", example = "567890123456789")
         private Long id;
 
-        @ApiModelProperty(value = "名称", example = "测试对象", notes = "对象的名称")
+        @Schema(description = "名称", example = "测试对象")
         private String name;
     }
 }

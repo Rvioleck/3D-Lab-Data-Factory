@@ -7,7 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -75,11 +75,11 @@ public class CosManager {
         try {
             // 标准化路径，去除开头的斜杠
             key = normalizePath(key);
-            
+
             // 创建上传请求
             ObjectMetadata metadata = new ObjectMetadata();
             PutObjectRequest putObjectRequest = new PutObjectRequest(cosConfig.getBucket(), key, inputStream, metadata);
-            
+
             // 执行上传
             cosClient.putObject(putObjectRequest);
             log.info("Uploaded file to Tencent COS: {}", key);
@@ -98,12 +98,12 @@ public class CosManager {
      */
     public byte[] downloadFile(String key) throws IOException {
         key = normalizePath(key);
-        
+
         try {
             // 获取对象
             GetObjectRequest getObjectRequest = new GetObjectRequest(cosConfig.getBucket(), key);
             COSObject cosObject = cosClient.getObject(getObjectRequest);
-            
+
             // 读取对象内容
             try (InputStream inputStream = cosObject.getObjectContent();
                  ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
@@ -177,18 +177,18 @@ public class CosManager {
         if (!prefix.endsWith("/") && !prefix.isEmpty()) {
             prefix += "/";
         }
-        
+
         try {
             ListObjectsRequest listObjectsRequest = new ListObjectsRequest();
             listObjectsRequest.setBucketName(cosConfig.getBucket());
             listObjectsRequest.setPrefix(prefix);
             listObjectsRequest.setDelimiter("/");
-            
+
             ObjectListing objectListing;
             do {
                 objectListing = cosClient.listObjects(listObjectsRequest);
                 List<COSObjectSummary> cosObjectSummaries = objectListing.getObjectSummaries();
-                
+
                 for (COSObjectSummary cosObjectSummary : cosObjectSummaries) {
                     String key = cosObjectSummary.getKey();
                     if (!key.equals(prefix)) {
@@ -198,14 +198,14 @@ public class CosManager {
                         }
                     }
                 }
-                
+
                 listObjectsRequest.setMarker(objectListing.getNextMarker());
             } while (objectListing.isTruncated());
-            
+
         } catch (Exception e) {
             log.error("Failed to list files from Tencent COS: {}", prefix, e);
         }
-        
+
         return files;
     }
 
@@ -221,18 +221,18 @@ public class CosManager {
         if (!prefix.endsWith("/") && !prefix.isEmpty()) {
             prefix += "/";
         }
-        
+
         try {
             ListObjectsRequest listObjectsRequest = new ListObjectsRequest();
             listObjectsRequest.setBucketName(cosConfig.getBucket());
             listObjectsRequest.setPrefix(prefix);
             listObjectsRequest.setDelimiter("/");
-            
+
             ObjectListing objectListing;
             do {
                 objectListing = cosClient.listObjects(listObjectsRequest);
                 List<String> commonPrefixes = objectListing.getCommonPrefixes();
-                
+
                 for (String commonPrefix : commonPrefixes) {
                     if (!commonPrefix.equals(prefix)) {
                         // 去除末尾的斜杠
@@ -247,14 +247,14 @@ public class CosManager {
                         directories.add(dirName);
                     }
                 }
-                
+
                 listObjectsRequest.setMarker(objectListing.getNextMarker());
             } while (objectListing.isTruncated());
-            
+
         } catch (Exception e) {
             log.error("Failed to list directories from Tencent COS: {}", prefix, e);
         }
-        
+
         return directories;
     }
 

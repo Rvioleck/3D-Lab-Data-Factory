@@ -21,15 +21,15 @@ import com.elwg.ai3dbackend.service.ModelService;
 import com.elwg.ai3dbackend.service.PictureService;
 import com.elwg.ai3dbackend.service.UserService;
 import com.elwg.ai3dbackend.utils.ImageUtils;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.annotation.Resource;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -43,7 +43,7 @@ import java.util.stream.Collectors;
  */
 @RestController
 @RequestMapping("/picture")
-@Api(tags = "图片资源接口", description = "提供图片资源管理相关的功能")
+@Tag(name = "图片资源接口", description = "提供图片资源管理相关的功能")
 @Slf4j
 public class PictureController {
 
@@ -75,7 +75,7 @@ public class PictureController {
      * @return 包含上传结果的响应对象
      */
     @PostMapping("/upload")
-    @ApiOperation(value = "上传图片", notes = "上传图片文件并保存图片信息")
+    @Operation(summary = "上传图片", description = "上传图片文件并保存图片信息")
     @AuthCheck(mustRole = UserConstant.USER_ROLE)
     public BaseResponse<PictureVO> uploadPicture(
             @RequestParam("file") MultipartFile file,
@@ -172,7 +172,7 @@ public class PictureController {
      * @return 图片详情
      */
     @GetMapping("/{id}")
-    @ApiOperation(value = "获取图片详情", notes = "根据图片ID获取图片详细信息")
+    @Operation(summary = "获取图片详情", description = "根据图片ID获取图片详细信息")
     public BaseResponse<PictureVO> getPictureById(@PathVariable Long id) {
         // 校验参数
         ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR, "图片ID不合法");
@@ -202,7 +202,7 @@ public class PictureController {
      * @return 分页图片列表
      */
     @PostMapping("/list/page")
-    @ApiOperation(value = "分页获取图片列表", notes = "根据条件分页获取图片列表")
+    @Operation(summary = "分页获取图片列表", description = "根据条件分页获取图片列表")
     public BaseResponse<Page<PictureVO>> listPictureByPage(@RequestBody PictureQueryRequest pictureQueryRequest) {
         long current = pictureQueryRequest.getCurrent();
         long size = pictureQueryRequest.getPageSize();
@@ -282,7 +282,7 @@ public class PictureController {
      * @return 更新结果
      */
     @PostMapping("/update")
-    @ApiOperation(value = "更新图片信息", notes = "更新图片的基本信息")
+    @Operation(summary = "更新图片信息", description = "更新图片的基本信息")
     public BaseResponse<Boolean> updatePicture(@RequestBody PictureUpdateRequest pictureUpdateRequest,
                                                HttpServletRequest request) {
         // 校验参数
@@ -320,7 +320,7 @@ public class PictureController {
      * @return 删除结果
      */
     @PostMapping("/delete")
-    @ApiOperation(value = "删除图片", notes = "删除图片及其存储文件")
+    @Operation(summary = "删除图片", description = "删除图片及其存储文件")
     public BaseResponse<Boolean> deletePicture(@RequestBody DeleteRequest deleteRequest,
                                                HttpServletRequest request) {
         // 校验参数
@@ -361,7 +361,7 @@ public class PictureController {
      * @return 分类列表
      */
     @GetMapping("/categories")
-    @ApiOperation(value = "获取图片分类列表", notes = "获取系统中所有的图片分类")
+    @Operation(summary = "获取图片分类列表", description = "获取系统中所有的图片分类")
     public BaseResponse<List<String>> getPictureCategories() {
         // 查询所有不重复的分类
         List<String> categories = pictureService.listCategories();
@@ -377,7 +377,7 @@ public class PictureController {
      * @return 标签列表
      */
     @GetMapping("/tags")
-    @ApiOperation(value = "获取图片标签列表", notes = "获取系统中所有的图片标签")
+    @Operation(summary = "获取图片标签列表", description = "获取系统中所有的图片标签")
     public BaseResponse<List<String>> getPictureTags() {
         // 查询所有不重复的标签
         List<String> tags = pictureService.listTags();
@@ -394,7 +394,7 @@ public class PictureController {
      * @return 图片信息列表
      */
     @PostMapping("/batch")
-    @ApiOperation(value = "批量获取图片信息", notes = "根据ID列表批量获取图片信息")
+    @Operation(summary = "批量获取图片信息", description = "根据ID列表批量获取图片信息")
     public BaseResponse<List<PictureVO>> batchGetPictureByIds(@RequestBody List<Long> ids) {
         // 校验参数
         ThrowUtils.throwIf(ids == null || ids.isEmpty(), ErrorCode.PARAMS_ERROR);

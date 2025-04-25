@@ -245,9 +245,9 @@
                   id="userPassword"
                   v-model="newUser.userPassword"
                   required
-                  minlength="8"
+                  minlength="6"
                 />
-                <div class="form-text">密码长度至少为8个字符</div>
+                <div class="form-text">密码长度至少为6个字符</div>
               </div>
               <div class="mb-3">
                 <label for="checkPassword" class="form-label">确认密码 <span class="text-danger">*</span></label>
@@ -332,7 +332,7 @@
                   v-model="editingUser.userPassword"
                   placeholder="留空表示不修改密码"
                 />
-                <div class="form-text">如需修改密码，请输入新密码，长度至少为8个字符</div>
+                <div class="form-text">如需修改密码，请输入新密码，长度至少为6个字符</div>
               </div>
               <div class="mb-3">
                 <label for="editUserName" class="form-label">用户名</label>
@@ -539,7 +539,7 @@
 
 <script>
 import { ref, computed, onMounted } from 'vue'
-import { useStore } from 'vuex'
+import { useStore } from '@/utils/storeCompat'
 import { useRouter } from 'vue-router'
 import { Modal, Toast } from 'bootstrap'
 import {
@@ -804,8 +804,8 @@ export default {
         return
       }
 
-      if (newUser.value.userPassword.length < 8) {
-        showToast('密码长度至少为8个字符', 'warning')
+      if (newUser.value.userPassword.length < 6) {
+        showToast('密码长度至少为6个字符', 'warning')
         return
       }
 
@@ -891,8 +891,8 @@ export default {
     // 提交更新用户
     const submitUpdateUser = async () => {
       // 表单验证
-      if (editingUser.value.userPassword && editingUser.value.userPassword.length < 8) {
-        showToast('密码长度至少为8个字符', 'warning')
+      if (editingUser.value.userPassword && editingUser.value.userPassword.length < 6) {
+        showToast('密码长度至少为6个字符', 'warning')
         return
       }
 

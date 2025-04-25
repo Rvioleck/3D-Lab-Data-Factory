@@ -1,39 +1,7 @@
 import axios from 'axios'
+import { apiClient } from './apiClient'
 
 const API_URL = '/api'
-
-// 创建axios实例
-const apiClient = axios.create({
-  baseURL: API_URL,
-  withCredentials: true, // 允许跨域请求携带cookie
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
-
-// 请求拦截器
-apiClient.interceptors.request.use(
-  config => {
-    // 可以在这里添加认证信息等
-    return config
-  },
-  error => {
-    return Promise.reject(error)
-  }
-)
-
-// 响应拦截器
-apiClient.interceptors.response.use(
-  response => {
-    // 如果响应成功，直接返回数据
-    return response
-  },
-  error => {
-    // 处理错误响应
-    console.error('API请求错误:', error)
-    return Promise.reject(error)
-  }
-)
 
 // 用户登录
 export const login = async (credentials) => {
@@ -49,7 +17,11 @@ export const login = async (credentials) => {
     return response.data
   } catch (error) {
     console.error('登录失败:', error)
-    throw error.response?.data || { message: '网络错误，请稍后重试' }
+    if (error.response && error.response.data) {
+      throw error.response.data
+    } else {
+      throw { message: error.message || '网络错误，请稍后重试' }
+    }
   }
 }
 
@@ -60,7 +32,11 @@ export const register = async (userData) => {
     return response.data
   } catch (error) {
     console.error('注册失败:', error)
-    throw error.response?.data || { message: '网络错误，请稍后重试' }
+    if (error.response && error.response.data) {
+      throw error.response.data
+    } else {
+      throw { message: error.message || '网络错误，请稍后重试' }
+    }
   }
 }
 
@@ -68,17 +44,16 @@ export const register = async (userData) => {
 export const getLoginUser = async () => {
   try {
     console.log('发送获取当前登录用户信息请求')
-    const response = await apiClient.post('/user/get/login', {}, {
-      withCredentials: true, // 确保发送请求时带上cookie
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    })
+    const response = await apiClient.post('/user/get/login', {})
     console.log('获取用户信息响应:', response.data)
     return response.data
   } catch (error) {
     console.error('获取用户信息失败:', error)
-    throw error.response?.data || { message: '网络错误，请稍后重试' }
+    if (error.response && error.response.data) {
+      throw error.response.data
+    } else {
+      throw { message: error.message || '网络错误，请稍后重试' }
+    }
   }
 }
 

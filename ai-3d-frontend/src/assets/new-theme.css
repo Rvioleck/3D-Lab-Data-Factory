@@ -1,5 +1,15 @@
 /* 新主题样式 */
 :root {
+  /* 玻璃态设计变量 */
+  --glass-bg: rgba(255, 255, 255, 0.15);
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  --glass-blur: 10px;
+  --glass-hover: rgba(255, 255, 255, 0.25);
+
+  /* 暗色模式玻璃态 */
+  --glass-dark-bg: rgba(20, 20, 30, 0.7);
+  --glass-dark-border: rgba(255, 255, 255, 0.08);
   /* 主色调 */
   --primary-color: #4361ee;
   --primary-hover: #3a56d4;
@@ -162,30 +172,72 @@
   --gradient-pink: linear-gradient(135deg, #ec4899 0%, #f472b6 100%);
 }
 
+/* 玻璃态卡片 */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  box-shadow: var(--glass-shadow);
+  transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  transform: translateY(-5px);
+}
+
+/* 玻璃态按钮 */
+.glass-button {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 12px 24px;
+  color: white;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.glass-button:hover {
+  background: var(--glass-hover);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* 暗色模式玻璃态 */
+.dark-theme .glass-card,
+.dark-theme .glass-button {
+  background: var(--glass-dark-bg);
+  border-color: var(--glass-dark-border);
+}
+
 /* 暗色主题 */
 .dark-theme {
   --primary-color: #6366f1;
   --primary-hover: #4f46e5;
   --primary-light: #1e1b4b;
-  
+
   --secondary-color: #7c3aed;
   --secondary-hover: #6d28d9;
   --secondary-light: #2e1065;
-  
+
   --accent-color: #ec4899;
   --accent-hover: #db2777;
   --accent-light: #500724;
-  
+
   --bg-primary: #121212;
   --bg-secondary: #1e1e1e;
   --bg-tertiary: #2d2d2d;
-  
+
   --text-primary: #f9fafb;
   --text-secondary: #e5e7eb;
   --text-tertiary: #9ca3af;
-  
+
   --border-color: #2d2d2d;
-  
+
   --neutral-50: #0a0c10;
   --neutral-100: #111827;
   --neutral-200: #1f2937;
@@ -197,7 +249,7 @@
   --neutral-800: #e5e7eb;
   --neutral-900: #f3f4f6;
   --neutral-950: #f9fafb;
-  
+
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
@@ -431,7 +483,7 @@ body {
 .transition-slow { transition: all var(--transition-slow) var(--transition-ease); }
 
 .hover-lift {
-  transition: transform var(--transition-normal) var(--transition-ease), 
+  transition: transform var(--transition-normal) var(--transition-ease),
               box-shadow var(--transition-normal) var(--transition-ease);
 }
 

@@ -222,9 +222,9 @@
                   id="newPassword"
                   v-model="passwordForm.newPassword"
                   required
-                  minlength="8"
+                  minlength="6"
                 />
-                <div class="form-text">密码长度至少为8个字符</div>
+                <div class="form-text">密码长度至少为6个字符</div>
               </div>
               <div class="mb-3">
                 <label for="confirmPassword" class="form-label">确认新密码</label>
@@ -258,7 +258,7 @@
 
 <script>
 import { ref, computed, onMounted } from 'vue'
-import { useStore } from 'vuex'
+import { useStore } from '@/utils/storeCompat'
 import { useRouter } from 'vue-router'
 import { Modal } from 'bootstrap'
 import { getLoginUser, updateUserProfile, updateUserPassword, uploadUserAvatar } from '@/api/user'
@@ -498,8 +498,8 @@ export default {
         return
       }
 
-      if (passwordForm.value.newPassword.length < 8) {
-        showToast('新密码长度至少为8个字符', 'warning')
+      if (passwordForm.value.newPassword.length < 6) {
+        showToast('新密码长度至少为6个字符', 'warning')
         return
       }
 

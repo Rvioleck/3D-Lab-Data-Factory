@@ -1,7 +1,6 @@
 package com.elwg.ai3dbackend.model.vo;
 
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -15,7 +14,7 @@ import java.util.Date;
  */
 @EqualsAndHashCode(callSuper = true)
 @Data
-@ApiModel(value = "UserDetailVO", description = "用户详细视图对象")
+@Schema(name = "UserDetailVO", description = "用户详细视图对象")
 public class UserDetailVO extends UserVO {
 
     /**
@@ -26,18 +25,18 @@ public class UserDetailVO extends UserVO {
     /**
      * 编辑时间
      */
-    @ApiModelProperty(value = "编辑时间", example = "2023-01-01 12:00:00")
+    @Schema(description = "编辑时间", example = "2023-01-01 12:00:00")
     private Date editTime;
 
     /**
      * 最后登录时间（可以在未来扩展）
      */
-    @ApiModelProperty(value = "最后登录时间", example = "2023-01-01 12:00:00")
+    @Schema(description = "最后登录时间", example = "2023-01-01 12:00:00")
     private Date lastLoginTime;
 
     /**
      * 用户状态（可以在未来扩展）
      */
-    @ApiModelProperty(value = "用户状态", example = "active", notes = "可选值：active（活跃）、inactive（非活跃）")
+    @Schema(description = "用户状态", example = "active", allowableValues = {"active", "inactive"}, implementation = String.class)
     private String userStatus;
 }

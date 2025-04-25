@@ -1,15 +1,7 @@
 import axios from 'axios'
+import { apiClient } from './apiClient'
 
 const API_URL = '/api'
-
-// 创建axios实例
-const apiClient = axios.create({
-  baseURL: API_URL,
-  withCredentials: true, // 允许跨域请求携带cookie
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
 
 /**
  * 上传图片
@@ -25,20 +17,20 @@ export const uploadPicture = async (file, metadata = {}) => {
   try {
     const formData = new FormData()
     formData.append('file', file)
-    
+
     // 添加元数据
     if (metadata.name) formData.append('name', metadata.name)
     if (metadata.category) formData.append('category', metadata.category)
     if (metadata.tags) formData.append('tags', metadata.tags)
     if (metadata.introduction) formData.append('introduction', metadata.introduction)
-    
+
     const response = await axios.post(`${API_URL}/picture/upload`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       },
       withCredentials: true
     })
-    
+
     return response.data
   } catch (error) {
     console.error('上传图片失败:', error)

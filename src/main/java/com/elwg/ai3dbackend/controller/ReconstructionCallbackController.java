@@ -3,7 +3,6 @@ package com.elwg.ai3dbackend.controller;
 import com.elwg.ai3dbackend.common.BaseResponse;
 import com.elwg.ai3dbackend.common.ResultUtils;
 import com.elwg.ai3dbackend.constant.TaskStatus;
-import com.elwg.ai3dbackend.exception.BusinessException;
 import com.elwg.ai3dbackend.exception.ErrorCode;
 import com.elwg.ai3dbackend.model.dto.callback.StatusUpdateRequest;
 import com.elwg.ai3dbackend.model.entity.Model;
@@ -14,22 +13,19 @@ import com.elwg.ai3dbackend.service.ModelService;
 import com.elwg.ai3dbackend.service.ReconstructionTaskService;
 import com.elwg.ai3dbackend.utils.ZipUtils;
 
-import java.util.concurrent.CompletableFuture;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * 3D重建回调控制器
@@ -39,7 +35,7 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/reconstruction/callback")
-@Api(tags = "3D重建回调接口", description = "接收Python服务的回调，包括处理结果和状态更新")
+@Tag(name = "3D重建回调接口", description = "接收Python服务的回调，包括处理结果和状态更新")
 @Slf4j
 public class ReconstructionCallbackController {
 
@@ -67,7 +63,7 @@ public class ReconstructionCallbackController {
      * @return 处理结果
      */
     @PostMapping("/result/{taskId}")
-    @ApiOperation(value = "接收结果部分", notes = "接收Python服务发送的处理结果部分")
+    @Operation(summary = "接收结果部分", description = "接收Python服务发送的处理结果部分")
     public BaseResponse<Map<String, Object>> receiveResultPart(
             @PathVariable Long taskId,
             @RequestParam("name") String name,
@@ -419,7 +415,7 @@ public class ReconstructionCallbackController {
      * @return 处理结果
      */
     @PostMapping("/status")
-    @ApiOperation(value = "接收状态更新", notes = "接收Python服务发送的任务状态更新")
+    @Operation(summary = "接收状态更新", description = "接收Python服务发送的任务状态更新")
     public BaseResponse<Map<String, Object>> receiveStatusUpdate(@RequestBody StatusUpdateRequest request) {
         log.info("Received status update for task: {}, status: {}, error: {}",
                 request.getTaskId(), request.getStatus(), request.getError());

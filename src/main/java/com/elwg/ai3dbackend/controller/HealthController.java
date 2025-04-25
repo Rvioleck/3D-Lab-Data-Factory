@@ -2,8 +2,8 @@ package com.elwg.ai3dbackend.controller;
 
 import com.elwg.ai3dbackend.common.BaseResponse;
 import com.elwg.ai3dbackend.common.ResultUtils;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
@@ -23,7 +23,7 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/health")
-@Api(tags = "健康检查接口", description = "提供应用程序健康状态和运行情况监控")
+@Tag(name = "健康检查接口", description = "提供应用程序健康状态和运行情况监控")
 public class HealthController {
 
     @Autowired
@@ -40,7 +40,7 @@ public class HealthController {
      * @return 包含健康状态的响应对象，正常时返回"OK"
      */
     @GetMapping
-    @ApiOperation(value = "简单健康检查", notes = "返回基本的健康状态，可用于负载均衡器检查")
+    @Operation(summary = "简单健康检查", description = "返回基本的健康状态，可用于负载均衡器检查")
 
     public BaseResponse<String> health() {
         return ResultUtils.success("OK");
@@ -63,7 +63,7 @@ public class HealthController {
      * @return 包含应用程序详细信息的响应对象
      */
     @GetMapping("/detail")
-    @ApiOperation(value = "详细健康检查", notes = "返回应用程序的详细运行信息，包括应用信息、JVM信息、系统信息等")
+    @Operation(summary = "详细健康检查", description = "返回应用程序的详细运行信息，包括应用信息、JVM信息、系统信息等")
     public BaseResponse<Map<String, Object>> healthDetail() {
         Map<String, Object> details = new HashMap<>();
 
