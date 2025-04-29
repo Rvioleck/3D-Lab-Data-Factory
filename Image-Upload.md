@@ -2,8 +2,6 @@
 
 本文档总结了图片上传到后端、记录URL数据并上传到云对象存储的几种实现方案，分析各自的优缺点，并提供时序图以便更好地理解流程。
 
-> 注意：本文档中的时序图需要使用 PlantUML 生成。请先安装 PlantUML 插件或使用在线工具将 .puml 文件渲染为图像。
-
 ## 方案概述
 
 在实现图片上传功能时，主要面临的挑战是如何协调数据库操作和云存储操作，确保数据一致性。由于这两种操作无法在同一个事务中完成，我们需要权衡不同的实现策略。
@@ -37,7 +35,7 @@
 - 需要额外的状态字段和状态管理逻辑
 - 用户可能看到尚未完成上传的图片记录
 
-## 方案二：先上传文件，再写数据库
+## 方案二：先上传文件 + 定期清理
 
 ### 流程描述
 
@@ -46,6 +44,7 @@
 3. 上传文件到云存储
 4. 获取文件URL
 5. 创建数据库记录
+6. 定期执行清理任务，处理孤儿文件和数据一致性
 
 ### 时序图
 
@@ -58,12 +57,19 @@
 - 不会有"悬空引用"问题
 - 实现逻辑相对简单
 - 用户看到的记录一定对应有效文件
+- 通过定期清理机制保证数据一致性
 
 ### 缺点
 
-- 可能产生孤儿文件（系统崩溃导致未能创建数据库记录）
-- 需要定期清理机制处理孤儿文件
-- 上传失败时需要额外的错误处理
+- 需要额外的定时任务机制
+- 短期内可能存在孤儿文件
+- 清理任务可能带来额外的系统开销
+
+### 适用场景
+
+- 适合小型应用和对数据一致性要求不是特别高的场景
+- 适合文件存储成本相对较低的情况
+- 适合能够容忍短期数据不一致的业务
 
 ## 方案三：状态标记 + 定期清理
 
@@ -151,3 +157,77 @@
 - 如果服务器负载是瓶颈，选择方案四
 
 最终，选择合适的方案需要考虑业务需求、技术环境、团队能力和维护成本等多方面因素。
+
+## 采用方案二 实现细节
+
+#### 1. 数据清理策略
+
+系统实现了两种清理机制：
+
+1. **清理孤儿文件**：删除存储中没有对应数据库记录的文件
+```java
+// 1. 获取COS中的所有图片URL (Set A)
+Set<String> cosUrls = new HashSet<>(fileStorageService.listFiles("images/").values());
+
+// 2. 获取数据库中的所有URL (Set B)
+Set<String> dbUrls = list(new LambdaQueryWrapper<Picture>()
+        .select(Picture::getUrl))
+        .stream()
+        .map(Picture::getUrl)
+        .collect(Collectors.toSet());
+
+// 3. 计算差集 A - (A∩B)，得到孤立文件的URL
+cosUrls.removeAll(dbUrls);
+
+// 4. 删除孤立文件
+for (String fileUrl : cosUrls) {
+    fileStorageService.deleteFile(extractPathFromUrl(fileUrl));
+}
+```
+
+2. **清理无效记录**：删除数据库中指向不存在文件的记录
+```java
+// 1. 获取所有数据库记录
+List<Picture> pictures = list(new LambdaQueryWrapper<Picture>()
+        .select(Picture::getId, Picture::getUrl));
+
+// 2. 找出指向不存在文件的记录
+List<Long> idsToDelete = pictures.stream()
+        .filter(picture -> !fileStorageService.isFileExists(
+            extractPathFromUrl(picture.getUrl())
+        ))
+        .map(Picture::getId)
+        .collect(Collectors.toList());
+
+// 3. 批量删除无效记录
+if (!idsToDelete.isEmpty()) {
+    removeBatchByIds(idsToDelete);
+}
+```
+
+#### 2. 定时任务配置
+
+建议配置定时任务在系统负载较低的时间段执行，例如：
+
+```java
+@Scheduled(cron = "0 0 2 * * ?")  // 每天凌晨2点执行
+public void scheduledCleanup() {
+    cleanupOrphanedFiles();    // 清理孤儿文件
+    cleanupInvalidRecords();   // 清理无效记录
+}
+```
+
+#### 3. 性能优化
+
+- 使用集合运算而不是循环比对，提高效率
+- 批量操作代替单条操作，减少数据库访问
+- 只查询必要的字段，减少数据传输
+- 使用事务确保数据一致性
+- 异常处理确保单个文件失败不影响整体流程
+
+#### 4. 监控建议
+
+- 记录每次清理的数量和耗时
+- 监控孤儿文件和无效记录的增长趋势
+- 设置告警阈值，当清理数量异常时通知相关人员
+- 保留清理操作日志，便于问题追踪

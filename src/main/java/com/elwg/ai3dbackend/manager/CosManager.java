@@ -287,4 +287,20 @@ public class CosManager {
         // 去除开头的斜杠
         return path.startsWith("/") ? path.substring(1) : path;
     }
+
+    /**
+     * 从URL中提取存储路径
+     * @param url 完整的文件URL
+     * @return 存储系统中的相对路径
+     */
+    public String extractPathFromUrl(String url) {
+        if (url == null) {
+            return null;
+        }
+        // 如果是完整URL，提取路径部分
+        if (url.contains(cosConfig.getHost())) {
+            url = url.substring(url.indexOf(cosConfig.getHost()) + cosConfig.getHost().length());
+        }
+        return normalizePath(url);
+    }
 }

@@ -99,7 +99,7 @@ public class ReconstructionController {
             // 检查图片ID
             ThrowUtils.throwIf(imageId == null || imageId <= 0, ErrorCode.PARAMS_ERROR, "图片ID不合法");
             // 查询图片信息
-            Picture picture = pictureService.getPictureById(imageId);
+            Picture picture = pictureService.getById(imageId);
             ThrowUtils.throwIf(picture == null, ErrorCode.NOT_FOUND_ERROR, "图片不存在");
             // 获取图片URL
             String imageUrl = picture.getUrl();

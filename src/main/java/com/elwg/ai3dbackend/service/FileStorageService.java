@@ -94,4 +94,11 @@ public interface FileStorageService {
      * @return 文件的物理路径，如果不适用则返回null
      */
     String getPhysicalPath(String path);
+
+    /**
+     * 从URL中提取存储路径
+     * @param url 完整的文件URL
+     * @return 存储系统中的相对路径
+     */
+    String extractPathFromUrl(String url);
 }

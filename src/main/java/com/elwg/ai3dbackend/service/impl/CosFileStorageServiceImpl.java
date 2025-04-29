@@ -140,4 +140,14 @@ public class CosFileStorageServiceImpl implements FileStorageService {
         // 对于云存储，不适用物理路径的概念
         return null;
     }
+
+    /**
+     * 从URL中提取存储路径
+     * @param url 完整的文件URL
+     * @return 存储系统中的相对路径
+     */
+    @Override
+    public String extractPathFromUrl(String url) {
+        return cosManager.extractPathFromUrl(url);
+    }
 }

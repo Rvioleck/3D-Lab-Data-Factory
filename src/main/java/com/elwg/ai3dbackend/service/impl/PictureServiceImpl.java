@@ -5,13 +5,14 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.elwg.ai3dbackend.mapper.PictureMapper;
 import com.elwg.ai3dbackend.model.entity.Picture;
+import com.elwg.ai3dbackend.service.FileStorageService;
 import com.elwg.ai3dbackend.service.PictureService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -19,18 +20,11 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture> implements PictureService {
 
-    /**
-     * 根据ID查询图片
-     *
-     * @param id 图片ID
-     * @return 图片实体，如果不存在则返回null
-     */
-    @Override
-    public Picture getPictureById(Long id) {
-        return getById(id);
-    }
+    private final FileStorageService fileStorageService;
+
 
     /**
      * 获取所有不重复的图片分类
@@ -84,5 +78,98 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture> impl
                 .filter(StrUtil::isNotBlank)
                 .distinct()
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 检查并清理无效的图片记录
+     * @return 清理的记录数量
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int cleanupInvalidRecords() {
+        int cleanedCount = 0;
+        try {
+            // 1. 获取所有数据库记录的URL和ID
+            List<Picture> pictures = list(new LambdaQueryWrapper<Picture>()
+                    .select(Picture::getId, Picture::getUrl));
+            
+            if (pictures.isEmpty()) {
+                return 0;
+            }
+
+            // 2. 批量检查文件是否存在
+            List<Long> idsToDelete = pictures.stream()
+                    .filter(picture -> {
+                        try {
+                            String path = fileStorageService.extractPathFromUrl(picture.getUrl());
+                            return !fileStorageService.isFileExists(path);
+                        } catch (Exception e) {
+                            log.error("Error checking picture: id={}", picture.getId(), e);
+                            return false;
+                        }
+                    })
+                    .map(Picture::getId)
+                    .collect(Collectors.toList());
+
+            // 3. 批量删除无效记录
+            if (!idsToDelete.isEmpty()) {
+                cleanedCount = idsToDelete.size();
+                removeBatchByIds(idsToDelete);
+                log.info("Cleaned {} invalid picture records", cleanedCount);
+            }
+
+        } catch (Exception e) {
+            log.error("Error during cleanup process", e);
+        }
+
+        return cleanedCount;
+    }
+
+    /**
+     * 清理存储中没有对应数据库记录的文件
+     * @return 清理的文件数量
+     */
+    @Override
+    public int cleanupOrphanedFiles() {
+        int cleanedCount = 0;
+        
+        try {
+            // 1. 获取COS中的所有图片URL (Set A)
+            Set<String> cosUrls = new HashSet<>(fileStorageService.listFiles("images/").values());
+            if (cosUrls.isEmpty()) {
+                log.info("No files found in storage");
+                return 0;
+            }
+
+            // 2. 获取数据库中的所有URL (Set B)
+            Set<String> dbUrls = list(new LambdaQueryWrapper<Picture>()
+                    .select(Picture::getUrl))
+                    .stream()
+                    .map(Picture::getUrl)
+                    .collect(Collectors.toSet());
+
+            // 3. 计算差集 A - (A∩B)，得到孤立文件的URL
+            cosUrls.removeAll(dbUrls);
+
+            // 4. 删除孤立文件
+            for (String fileUrl : cosUrls) {
+                try {
+                    String path = fileStorageService.extractPathFromUrl(fileUrl);
+                    if (fileStorageService.deleteFile(path)) {
+                        cleanedCount++;
+                        log.info("Cleaned orphaned file: {}", path);
+                    }
+                } catch (Exception e) {
+                    log.error("Error deleting file: {}", fileUrl, e);
+                }
+            }
+            
+            log.info("Cleanup completed. Found and deleted {} orphaned files", cleanedCount);
+            
+        } catch (Exception e) {
+            log.error("Error during cleanup process", e);
+        }
+        
+        return cleanedCount;
     }
 }

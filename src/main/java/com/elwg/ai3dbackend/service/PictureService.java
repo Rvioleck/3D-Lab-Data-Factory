@@ -14,14 +14,6 @@ import java.util.List;
 public interface PictureService extends IService<Picture> {
 
     /**
-     * 根据ID查询图片
-     *
-     * @param id 图片ID
-     * @return 图片实体，如果不存在则返回null
-     */
-    Picture getPictureById(Long id);
-
-    /**
      * 获取所有不重复的图片分类
      *
      * @return 分类列表
@@ -34,4 +26,16 @@ public interface PictureService extends IService<Picture> {
      * @return 标签列表
      */
     List<String> listTags();
+
+    /**
+     * 检查并清理无效的图片记录
+     * @return 清理的记录数量
+     */
+    int cleanupInvalidRecords();
+
+    /**
+     * 清理存储中没有对应数据库记录的文件
+     * @return 清理的文件数量
+     */
+    int cleanupOrphanedFiles();
 }

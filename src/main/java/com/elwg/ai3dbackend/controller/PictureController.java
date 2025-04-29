@@ -25,9 +25,9 @@ import com.elwg.ai3dbackend.utils.ImageUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -48,12 +48,12 @@ import java.util.stream.Collectors;
  * - 图片删除
  * </p>
  *
- * @author [your-name]
  */
 @RestController
 @RequestMapping("/picture")
 @Slf4j
 @Tag(name = "图片管理", description = "图片上传、查询、更新和删除接口")
+@RequiredArgsConstructor
 public class PictureController {
 
     /**
@@ -61,21 +61,16 @@ public class PictureController {
      */
     private static final long FILE_SIZE_LIMIT = 10 * 1024 * 1024;
 
-    @Resource
-    private FileStorageService fileStorageService;
+    private final FileStorageService fileStorageService;
 
-    @Resource
-    private PictureService pictureService;
+    private final PictureService pictureService;
 
-    @Resource
-    private UserService userService;
+    private final UserService userService;
 
-    @Resource
-    private ModelService modelService;
+    private final ModelService modelService;
 
     /**
      * 上传图片
-     * <p>
      * 接收图片文件和相关元数据，将图片保存到文件存储系统，并在数据库中记录图片信息。
      * 处理流程：
      * 1. 验证用户登录状态和文件参数
@@ -83,7 +78,6 @@ public class PictureController {
      * 3. 生成唯一文件名并上传到存储系统
      * 4. 提取图片信息（尺寸等）
      * 5. 保存图片记录到数据库
-     * </p>
      *
      * @param request 图片上传请求，包含文件和元数据
      * @param httpRequest HTTP请求对象，用于获取用户信息
@@ -273,10 +267,8 @@ public class PictureController {
 
     /**
      * 更新图片信息
-     * <p>
      * 该接口允许已登录用户更新自己的图片信息，管理员可以更新任何图片。
      * 更新成功后返回 true。
-     * </p>
      *
      * @param pictureUpdateRequest 更新请求
      * @param request              HTTP请求
@@ -406,7 +398,7 @@ public class PictureController {
         // 获取图片ID列表
         List<Long> pictureIds = pictures.stream()
                 .map(Picture::getId)
-                .collect(Collectors.toList());
+                .toList();
 
         // 查询图片是否有关联的3D模型
         Map<Long, Boolean> pictureHasModelMap = new HashMap<>();

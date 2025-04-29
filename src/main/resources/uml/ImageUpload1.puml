@@ -1,5 +1,5 @@
 @startuml
-title 图片上传方案一：先写数据库，再上传文件
+title 图片上传方案一：先写数据库，再上传文件，再修改数据库状态
 
 actor "用户" as User
 participant "前端应用" as Frontend

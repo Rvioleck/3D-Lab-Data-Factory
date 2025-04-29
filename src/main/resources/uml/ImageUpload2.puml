@@ -1,11 +1,12 @@
 @startuml
-title 图片上传方案二：先上传文件，再写数据库
+title 图片上传方案二：先上传文件 + 定期清理
 
 actor "用户" as User
 participant "前端应用" as Frontend
 participant "后端服务" as Backend
 participant "对象存储 (COS)" as Cloud
 database "数据库 (MySQL)" as DB
+participant "定时任务" as Scheduler
 
 skinparam sequenceMessageAlign center
 
@@ -32,5 +33,23 @@ Frontend --> User : 显示上传成功
 
 deactivate User
 deactivate Frontend
+
+== 定期清理（异步执行） ==
+note over Scheduler : 定时执行（如每天）
+activate Scheduler
+Scheduler -> DB ++ : 获取所有图片记录
+DB --> Scheduler -- : 返回图片记录列表
+
+loop 对每条图片记录
+    Scheduler -> Cloud ++ : 检查文件是否存在
+    Cloud --> Scheduler -- : 返回检查结果
+    
+    alt 文件不存在
+        Scheduler -> DB ++ : 删除记录
+        DB --> Scheduler -- : 删除成功
+    end
+end
+
+deactivate Scheduler
 
 @enduml
