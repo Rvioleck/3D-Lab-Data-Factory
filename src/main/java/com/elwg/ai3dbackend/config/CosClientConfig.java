@@ -53,7 +53,6 @@ public class CosClientConfig {
         
         // 3. 设置使用HTTPS协议
         clientConfig.setHttpProtocol(HttpProtocol.https);
-        
         // 4. 生成COS客户端
         return new COSClient(cred, clientConfig);
     }

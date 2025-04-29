@@ -551,8 +551,8 @@ import {
   listUsersByPage,
   listAllUsers
 } from '@/api/admin'
-import UserStatistics from '@/components/UserStatistics.vue'
-import UserBatchActions from '@/components/UserBatchActions.vue'
+import UserStatistics from '@/components/user/UserStatistics.vue'
+import UserBatchActions from '@/components/user/UserBatchActions.vue'
 
 export default {
   name: 'UserManagementView',

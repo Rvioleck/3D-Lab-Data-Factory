@@ -6,10 +6,10 @@
         <div class="row align-items-center">
           <div class="col-lg-6 hero-content">
             <h1 class="hero-title">
-              <span class="accent-text">AI驱动</span>的3D内容创作平台
+              <span class="accent-text">3D-Lab</span> Data Factory
             </h1>
             <p class="hero-subtitle">
-              使用先进的人工智能技术，轻松创建、管理和分享高质量3D模型和图像
+              轻松创建、管理和分享高质量3D模型和图像
             </p>
             <div class="hero-actions">
               <button class="btn btn-primary btn-lg">开始创建</button>
@@ -102,9 +102,9 @@
                   <i class="bi bi-chat-dots"></i>
                 </div>
                 <div class="stat-info">
-                  <h3>AI对话</h3>
+                  <h3>数据分析</h3>
                   <div class="stat-value">{{ chatCount || 0 }}</div>
-                  <router-link to="/chat" class="stat-link">开始对话</router-link>
+                  <router-link to="/chat" class="stat-link">查看分析</router-link>
                 </div>
               </div>
             </div>
@@ -170,8 +170,8 @@
                   <i class="bi bi-magic"></i>
                 </div>
                 <div class="feature-content">
-                  <h3>AI生成模型</h3>
-                  <p>使用人工智能技术，通过文本描述生成3D模型</p>
+                  <h3>数据模型生成</h3>
+                  <p>使用先进技术，通过图像或文本描述生成3D模型</p>
                   <button class="btn btn-primary">开始生成</button>
                 </div>
               </div>

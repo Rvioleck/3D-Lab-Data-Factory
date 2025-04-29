@@ -43,33 +43,5 @@ public class ImageUtils {
         
         return imageInfo;
     }
-    
-    /**
-     * 从URL中提取文件路径
-     *
-     * @param url 文件URL
-     * @return 文件路径
-     */
-    public static String extractPathFromUrl(String url) {
-        if (url == null || url.isEmpty()) {
-            return null;
-        }
-        
-        // 假设URL格式为：https://example.com/path/to/file.jpg
-        // 我们需要提取 path/to/file.jpg 部分
-        
-        // 移除协议和域名部分
-        int protocolEnd = url.indexOf("://");
-        if (protocolEnd != -1) {
-            url = url.substring(protocolEnd + 3);
-        }
-        
-        // 移除域名部分
-        int domainEnd = url.indexOf("/");
-        if (domainEnd != -1) {
-            url = url.substring(domainEnd + 1);
-        }
-        
-        return url;
-    }
+
 }

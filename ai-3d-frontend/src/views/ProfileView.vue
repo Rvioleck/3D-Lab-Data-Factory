@@ -262,8 +262,8 @@ import { useStore } from '@/utils/storeCompat'
 import { useRouter } from 'vue-router'
 import { Modal } from 'bootstrap'
 import { getLoginUser, updateUserProfile, updateUserPassword, uploadUserAvatar } from '@/api/user'
-import UserActivityLog from '@/components/UserActivityLog.vue'
-import UserProfileStats from '@/components/UserProfileStats.vue'
+import UserActivityLog from '@/components/user/UserActivityLog.vue'
+import UserProfileStats from '@/components/user/UserProfileStats.vue'
 
 export default {
   name: 'ProfileView',

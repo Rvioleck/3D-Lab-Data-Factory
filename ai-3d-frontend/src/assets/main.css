@@ -1,0 +1,451 @@
+/* 主样式文件 */
+
+/* 导入基础样式 */
+@import './styles.css';
+
+/* 导入排版样式 */
+@import './typography.css';
+
+/* 导入组件样式 */
+@import './components.css';
+
+/* 导入布局样式 */
+@import './layouts.css';
+
+/* 导入特效和动画样式 */
+@import './effects.css';
+
+/* 自定义全局样式 */
+body {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  transition: background-color var(--transition-normal) ease, 
+              color var(--transition-normal) ease;
+}
+
+.main-content {
+  flex: 1;
+  padding-top: 70px; /* 为固定导航栏留出空间 */
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+/* 响应式调整 */
+@media (max-width: 1200px) {
+  .main-content {
+    max-width: 100%;
+  }
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--neutral-400);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--neutral-500);
+}
+
+/* 暗色主题滚动条 */
+.dark-theme::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+}
+
+.dark-theme::-webkit-scrollbar-thumb {
+  background: var(--neutral-600);
+}
+
+.dark-theme::-webkit-scrollbar-thumb:hover {
+  background: var(--neutral-500);
+}
+
+/* 选择文本样式 */
+::selection {
+  background-color: var(--primary-light);
+  color: var(--primary-color);
+}
+
+/* 聊天相关样式 */
+.chat-message {
+  display: flex;
+  margin-bottom: 1.5rem;
+}
+
+.chat-message-user {
+  justify-content: flex-end;
+}
+
+.chat-message-ai {
+  justify-content: flex-start;
+}
+
+.chat-bubble {
+  max-width: 80%;
+  padding: 1rem;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.chat-bubble-user {
+  background-color: var(--primary-light);
+  color: var(--primary-color);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 var(--radius-lg);
+}
+
+.chat-bubble-ai {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  border-radius: 0 var(--radius-lg) var(--radius-lg) var(--radius-lg);
+}
+
+.chat-time {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  margin-top: 0.25rem;
+  text-align: right;
+}
+
+.chat-input-container {
+  position: relative;
+  margin-top: 1rem;
+}
+
+.chat-input {
+  width: 100%;
+  padding: 0.75rem 3rem 0.75rem 1rem;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-primary);
+  resize: none;
+  min-height: 50px;
+  max-height: 150px;
+  transition: border-color var(--transition-fast) ease, box-shadow var(--transition-fast) ease;
+}
+
+.chat-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
+}
+
+.chat-send-button {
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0.5rem;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--transition-fast) ease;
+}
+
+.chat-send-button:hover {
+  background-color: var(--primary-hover);
+}
+
+.chat-send-button:disabled {
+  background-color: var(--neutral-300);
+  cursor: not-allowed;
+}
+
+/* 3D模型查看器样式 */
+.model-viewer {
+  width: 100%;
+  height: 400px;
+  background-color: var(--bg-tertiary);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  position: relative;
+}
+
+.model-controls {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.5rem;
+  background-color: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  padding: 0.5rem;
+  border-radius: var(--radius-full);
+  z-index: 10;
+}
+
+.model-control-button {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast) ease;
+}
+
+.model-control-button:hover {
+  background-color: var(--primary-light);
+  color: var(--primary-color);
+}
+
+.model-control-button.active {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+/* 图片库样式 */
+.image-card {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background-color: var(--bg-primary);
+  box-shadow: var(--shadow-md);
+  transition: transform var(--transition-normal) ease, box-shadow var(--transition-normal) ease;
+}
+
+.image-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-lg);
+}
+
+.image-card-img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+.image-card-body {
+  padding: 1rem;
+}
+
+.image-card-title {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.image-card-text {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.image-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.image-card-meta {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+/* 文件上传区域 */
+.upload-zone {
+  border: 2px dashed var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  text-align: center;
+  background-color: var(--bg-primary);
+  transition: all var(--transition-normal) ease;
+  cursor: pointer;
+}
+
+.upload-zone:hover {
+  border-color: var(--primary-color);
+  background-color: var(--primary-light);
+}
+
+.upload-icon {
+  font-size: 2.5rem;
+  color: var(--text-tertiary);
+  margin-bottom: 1rem;
+}
+
+.upload-text {
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.upload-hint {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+/* 加载中状态 */
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(var(--bg-primary-rgb), 0.7);
+  backdrop-filter: blur(3px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid rgba(var(--primary-rgb), 0.3);
+  border-radius: 50%;
+  border-top-color: var(--primary-color);
+  animation: spin 1s linear infinite;
+}
+
+.loading-text {
+  margin-top: 1rem;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 流式响应样式 */
+.streaming-text {
+  position: relative;
+}
+
+.streaming-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background-color: var(--primary-color);
+  margin-left: 2px;
+  animation: blink 1s step-end infinite;
+  vertical-align: text-bottom;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* 健康状态指示器 */
+.health-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem;
+  text-align: center;
+}
+
+.status-indicator {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  margin-bottom: 1.5rem;
+}
+
+.status-indicator.success {
+  background-color: var(--success-light);
+  color: var(--success-color);
+}
+
+.status-indicator.warning {
+  background-color: var(--warning-light);
+  color: var(--warning-color);
+}
+
+.status-indicator.danger {
+  background-color: var(--error-light);
+  color: var(--error-color);
+}
+
+/* 用户管理样式 */
+.user-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.5rem;
+}
+
+.user-table th,
+.user-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.user-table th {
+  font-weight: 600;
+  color: var(--text-secondary);
+  background-color: var(--bg-secondary);
+}
+
+.user-table tbody tr {
+  transition: background-color var(--transition-fast) ease;
+}
+
+.user-table tbody tr:hover {
+  background-color: var(--bg-tertiary);
+}
+
+.user-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.user-role-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: var(--radius-full);
+}
+
+.user-role-admin {
+  background-color: var(--primary-light);
+  color: var(--primary-color);
+}
+
+.user-role-user {
+  background-color: var(--secondary-light);
+  color: var(--secondary-color);
+}
+
+.user-role-banned {
+  background-color: var(--error-light);
+  color: var(--error-color);
+}

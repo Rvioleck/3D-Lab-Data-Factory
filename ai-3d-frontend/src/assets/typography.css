@@ -1,0 +1,410 @@
+/* 排版样式 */
+
+/* 基础文本样式 */
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+/* 标题 */
+h1, h2, h3, h4, h5, h6 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+
+h1 {
+  font-size: 2.5rem;
+}
+
+h2 {
+  font-size: 2rem;
+}
+
+h3 {
+  font-size: 1.75rem;
+}
+
+h4 {
+  font-size: 1.5rem;
+}
+
+h5 {
+  font-size: 1.25rem;
+}
+
+h6 {
+  font-size: 1rem;
+}
+
+/* 段落 */
+p {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+/* 链接 */
+a {
+  color: var(--primary-color);
+  text-decoration: none;
+  transition: color var(--transition-fast) ease;
+}
+
+a:hover {
+  color: var(--primary-hover);
+  text-decoration: underline;
+}
+
+/* 列表 */
+ul, ol {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+}
+
+li {
+  margin-bottom: 0.5rem;
+}
+
+/* 引用 */
+blockquote {
+  margin: 0 0 1rem;
+  padding: 1rem 1.5rem;
+  border-left: 4px solid var(--primary-color);
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-style: italic;
+  border-radius: var(--radius-md);
+}
+
+blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+/* 代码 */
+code {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 0.875em;
+  color: var(--primary-color);
+  background-color: var(--bg-tertiary);
+  padding: 0.2em 0.4em;
+  border-radius: var(--radius-sm);
+}
+
+pre {
+  display: block;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  overflow: auto;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 0.875em;
+  color: var(--text-primary);
+  background-color: var(--bg-tertiary);
+  padding: 1rem;
+  border-radius: var(--radius-md);
+}
+
+pre code {
+  font-size: inherit;
+  color: inherit;
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
+}
+
+/* 水平线 */
+hr {
+  margin: 2rem 0;
+  border: 0;
+  border-top: 1px solid var(--border-color);
+}
+
+/* 文本对齐 */
+.text-left { text-align: left; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-justify { text-align: justify; }
+
+/* 文本变换 */
+.text-lowercase { text-transform: lowercase; }
+.text-uppercase { text-transform: uppercase; }
+.text-capitalize { text-transform: capitalize; }
+
+/* 文本装饰 */
+.text-underline { text-decoration: underline; }
+.text-line-through { text-decoration: line-through; }
+.text-no-decoration { text-decoration: none; }
+
+/* 字体粗细 */
+.font-thin { font-weight: 100; }
+.font-extralight { font-weight: 200; }
+.font-light { font-weight: 300; }
+.font-normal { font-weight: 400; }
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+.font-extrabold { font-weight: 800; }
+.font-black { font-weight: 900; }
+
+/* 字体样式 */
+.italic { font-style: italic; }
+.not-italic { font-style: normal; }
+
+/* 行高 */
+.leading-none { line-height: 1; }
+.leading-tight { line-height: 1.25; }
+.leading-snug { line-height: 1.375; }
+.leading-normal { line-height: 1.5; }
+.leading-relaxed { line-height: 1.625; }
+.leading-loose { line-height: 2; }
+
+/* 字母间距 */
+.tracking-tighter { letter-spacing: -0.05em; }
+.tracking-tight { letter-spacing: -0.025em; }
+.tracking-normal { letter-spacing: 0; }
+.tracking-wide { letter-spacing: 0.025em; }
+.tracking-wider { letter-spacing: 0.05em; }
+.tracking-widest { letter-spacing: 0.1em; }
+
+/* 文本颜色 */
+.text-primary { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-tertiary { color: var(--text-tertiary); }
+.text-disabled { color: var(--text-disabled); }
+
+.text-primary-color { color: var(--primary-color); }
+.text-secondary-color { color: var(--secondary-color); }
+.text-accent-color { color: var(--accent-color); }
+.text-success { color: var(--success-color); }
+.text-warning { color: var(--warning-color); }
+.text-error { color: var(--error-color); }
+.text-info { color: var(--info-color); }
+
+/* 文本截断 */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.line-clamp-1,
+.line-clamp-2,
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-1 { -webkit-line-clamp: 1; }
+.line-clamp-2 { -webkit-line-clamp: 2; }
+.line-clamp-3 { -webkit-line-clamp: 3; }
+
+/* 文本大小 */
+.text-xs { font-size: 0.75rem; }
+.text-sm { font-size: 0.875rem; }
+.text-base { font-size: 1rem; }
+.text-lg { font-size: 1.125rem; }
+.text-xl { font-size: 1.25rem; }
+.text-2xl { font-size: 1.5rem; }
+.text-3xl { font-size: 1.875rem; }
+.text-4xl { font-size: 2.25rem; }
+.text-5xl { font-size: 3rem; }
+.text-6xl { font-size: 4rem; }
+
+/* 特殊文本效果 */
+.gradient-text {
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.gradient-text-primary {
+  background-image: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.gradient-text-accent {
+  background-image: linear-gradient(135deg, var(--accent-color), var(--primary-color));
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.text-shadow-sm {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.text-shadow {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.text-shadow-lg {
+  text-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* 文本动画 */
+.text-blink {
+  animation: text-blink 1s step-end infinite;
+}
+
+@keyframes text-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.text-fade-in {
+  animation: text-fade-in 1s ease;
+}
+
+@keyframes text-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.text-typing {
+  overflow: hidden;
+  border-right: 2px solid var(--primary-color);
+  white-space: nowrap;
+  animation: typing 3.5s steps(40, end), blink-caret 0.75s step-end infinite;
+}
+
+@keyframes typing {
+  from { width: 0 }
+  to { width: 100% }
+}
+
+@keyframes blink-caret {
+  from, to { border-color: transparent }
+  50% { border-color: var(--primary-color) }
+}
+
+/* Markdown 样式 */
+.markdown {
+  line-height: 1.6;
+}
+
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4,
+.markdown h5,
+.markdown h6 {
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.markdown h1 {
+  font-size: 2rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.5rem;
+}
+
+.markdown h2 {
+  font-size: 1.75rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.5rem;
+}
+
+.markdown h3 {
+  font-size: 1.5rem;
+}
+
+.markdown h4 {
+  font-size: 1.25rem;
+}
+
+.markdown h5 {
+  font-size: 1.125rem;
+}
+
+.markdown h6 {
+  font-size: 1rem;
+  color: var(--text-secondary);
+}
+
+.markdown p {
+  margin-bottom: 1rem;
+}
+
+.markdown ul,
+.markdown ol {
+  margin-bottom: 1rem;
+  padding-left: 2rem;
+}
+
+.markdown li {
+  margin-bottom: 0.5rem;
+}
+
+.markdown blockquote {
+  margin: 1rem 0;
+  padding: 0.5rem 1rem;
+  border-left: 4px solid var(--primary-color);
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+}
+
+.markdown pre {
+  margin: 1rem 0;
+  padding: 1rem;
+  background-color: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+}
+
+.markdown code {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 0.875em;
+  padding: 0.2em 0.4em;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-tertiary);
+}
+
+.markdown pre code {
+  padding: 0;
+  background-color: transparent;
+}
+
+.markdown table {
+  width: 100%;
+  margin-bottom: 1rem;
+  border-collapse: collapse;
+}
+
+.markdown th,
+.markdown td {
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+}
+
+.markdown th {
+  background-color: var(--bg-secondary);
+  font-weight: 600;
+}
+
+.markdown img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+}
+
+.markdown a {
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+.markdown a:hover {
+  text-decoration: underline;
+}
+
+.markdown hr {
+  margin: 2rem 0;
+  border: 0;
+  border-top: 1px solid var(--border-color);
+}

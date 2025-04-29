@@ -39,7 +39,7 @@ import java.util.Map;
  * 3D重建控制器
  * 提供3D重建相关的API接口，包括上传图片、获取重建结果等功能。
  *
- * @author 35245
+ * @author fyz
  */
 @RestController
 @RequestMapping("/reconstruction")

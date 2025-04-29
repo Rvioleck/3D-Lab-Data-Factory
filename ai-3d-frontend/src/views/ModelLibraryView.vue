@@ -88,7 +88,7 @@
             <div class="model-status-badge" :class="getStatusClass(model.status)">
               {{ getStatusText(model.status) }}
             </div>
-            
+
             <!-- 模型预览图 -->
             <div class="model-preview" @click="viewModel(model.id)">
               <img
@@ -112,7 +112,7 @@
                 <p>等待处理</p>
               </div>
             </div>
-            
+
             <div class="card-body">
               <h5 class="card-title">{{ model.name || '未命名模型' }}</h5>
               <p v-if="model.introduction" class="card-text text-muted small">

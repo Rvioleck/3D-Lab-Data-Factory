@@ -2,11 +2,13 @@ package com.elwg.ai3dbackend.service.impl;
 
 import com.elwg.ai3dbackend.manager.CosManager;
 import com.elwg.ai3dbackend.service.FileStorageService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
+
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
@@ -14,16 +16,15 @@ import java.util.Map;
 
 /**
  * 腾讯云对象存储服务实现
- * <p>
  * 使用腾讯云COS实现文件存储功能
- * </p>
+ * @author fyz
  */
 @Slf4j
 @Service("cosFileStorageService")
+@RequiredArgsConstructor
 public class CosFileStorageServiceImpl implements FileStorageService {
 
-    @Autowired
-    private CosManager cosManager;
+    private final CosManager cosManager;  // 构造器注入
 
     /**
      * 初始化存储服务
@@ -31,7 +32,7 @@ public class CosFileStorageServiceImpl implements FileStorageService {
      */
     @PostConstruct
     @Override
-    public void init() throws IOException {
+    public void init() {
         // CosManager已经在初始化时检查了存储桶是否存在
         log.info("Initialized Tencent COS storage service");
     }
@@ -45,7 +46,7 @@ public class CosFileStorageServiceImpl implements FileStorageService {
      */
     @Override
     public void saveFile(String path, byte[] data) throws IOException {
-        cosManager.uploadFile(path, data);
+        cosManager.uploadFile(path, new ByteArrayInputStream(data));
     }
 
     /**

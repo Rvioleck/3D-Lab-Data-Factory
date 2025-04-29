@@ -1,0 +1,63 @@
+@startuml
+title 图片上传方案四：预签名URL方案
+
+actor "用户" as User
+participant "前端应用" as Frontend
+participant "后端服务" as Backend
+participant "对象存储 (COS)" as Cloud
+database "数据库 (MySQL)" as DB
+participant "定时任务" as Scheduler
+
+skinparam sequenceMessageAlign center
+
+activate Frontend
+activate User
+
+== 获取上传URL ==
+User -> Frontend : 选择图片
+Frontend -> Backend ++ : POST /picture/getUploadUrl\n(文件名, 文件类型)
+Backend -> Backend : 生成唯一文件名和路径
+Backend -> Cloud ++ : 请求预签名URL
+Cloud --> Backend -- : 返回预签名URL
+Backend -> DB ++ : 创建记录(状态="待确认")
+DB --> Backend -- : 返回记录ID
+Backend --> Frontend -- : 返回预签名URL和记录ID
+
+== 前端直接上传 ==
+Frontend -> Cloud ++ : 使用预签名URL直接上传文件
+Cloud --> Frontend -- : 上传成功
+
+== 确认上传完成 ==
+Frontend -> Backend ++ : POST /picture/confirmUpload\n(记录ID, 元数据)
+Backend -> Cloud ++ : 验证文件是否存在
+Cloud --> Backend -- : 确认文件存在
+Backend -> DB ++ : 更新记录(状态="已上传", 元数据)
+DB --> Backend -- : 更新成功
+Backend --> Frontend -- : 返回成功响应
+Frontend --> User : 显示上传成功
+
+deactivate User
+deactivate Frontend
+
+== 定期清理（异步执行） ==
+note over Scheduler : 定时执行（如每小时）
+activate Scheduler
+Scheduler -> DB ++ : 查询长时间处于"待确认"状态的记录
+DB --> Scheduler -- : 返回待处理记录列表
+
+loop 对每条待处理记录
+    Scheduler -> Cloud ++ : 检查文件是否存在
+    Cloud --> Scheduler -- : 返回检查结果
+
+    alt 文件存在
+        Scheduler -> DB ++ : 更新状态(状态="已上传")
+        DB --> Scheduler -- : 更新成功
+    else 文件不存在且超时
+        Scheduler -> DB ++ : 删除记录
+        DB --> Scheduler -- : 删除成功
+    end
+end
+
+deactivate Scheduler
+
+@enduml

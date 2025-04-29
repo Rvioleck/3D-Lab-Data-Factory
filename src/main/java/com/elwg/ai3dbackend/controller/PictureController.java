@@ -13,6 +13,7 @@ import com.elwg.ai3dbackend.exception.ErrorCode;
 import com.elwg.ai3dbackend.exception.ThrowUtils;
 import com.elwg.ai3dbackend.model.dto.picture.PictureQueryRequest;
 import com.elwg.ai3dbackend.model.dto.picture.PictureUpdateRequest;
+import com.elwg.ai3dbackend.model.dto.picture.PictureUploadRequest;
 import com.elwg.ai3dbackend.model.entity.Picture;
 import com.elwg.ai3dbackend.model.entity.User;
 import com.elwg.ai3dbackend.model.vo.PictureVO;
@@ -23,29 +24,42 @@ import com.elwg.ai3dbackend.service.UserService;
 import com.elwg.ai3dbackend.utils.ImageUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * 图片资源控制器
- * 提供图片资源管理相关的API接口
+ * 图片管理控制器
+ * <p>
+ * 提供图片上传、查询、更新和删除等功能的REST接口。
+ * 支持图片文件的上传和元数据管理，包括：
+ * - 图片上传和存储
+ * - 图片信息查询和检索
+ * - 图片元数据更新
+ * - 图片删除
+ * </p>
+ *
+ * @author [your-name]
  */
 @RestController
 @RequestMapping("/picture")
-@Tag(name = "图片资源接口", description = "提供图片资源管理相关的功能")
 @Slf4j
+@Tag(name = "图片管理", description = "图片上传、查询、更新和删除接口")
 public class PictureController {
+
+    /**
+     * 文件大小限制（10MB）
+     */
+    private static final long FILE_SIZE_LIMIT = 10 * 1024 * 1024;
 
     @Resource
     private FileStorageService fileStorageService;
@@ -62,53 +76,43 @@ public class PictureController {
     /**
      * 上传图片
      * <p>
-     * 该接口允许所有已登录用户访问，用于上传图片文件并保存图片信息。
-     * 支持设置图片名称、分类、标签和简介等信息。
+     * 接收图片文件和相关元数据，将图片保存到文件存储系统，并在数据库中记录图片信息。
+     * 处理流程：
+     * 1. 验证用户登录状态和文件参数
+     * 2. 检查文件大小和类型
+     * 3. 生成唯一文件名并上传到存储系统
+     * 4. 提取图片信息（尺寸等）
+     * 5. 保存图片记录到数据库
      * </p>
      *
-     * @param file         图片文件
-     * @param name         图片名称（可选）
-     * @param category     图片分类（可选）
-     * @param tags         图片标签，逗号分隔（可选）
-     * @param introduction 图片简介（可选）
-     * @param request      HTTP请求
-     * @return 包含上传结果的响应对象
+     * @param request 图片上传请求，包含文件和元数据
+     * @param httpRequest HTTP请求对象，用于获取用户信息
+     * @return 上传成功的图片信息
+     * @throws BusinessException 当上传过程中发生错误时抛出
      */
     @PostMapping("/upload")
     @Operation(summary = "上传图片", description = "上传图片文件并保存图片信息")
-    @AuthCheck(mustRole = UserConstant.USER_ROLE)
+    @AuthCheck
     public BaseResponse<PictureVO> uploadPicture(
-            @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "name", required = false) String name,
-            @RequestParam(value = "category", required = false) String category,
-            @RequestParam(value = "tags", required = false) String tags,
-            @RequestParam(value = "introduction", required = false) String introduction,
-            HttpServletRequest request) {
-
-        // 获取当前登录用户 - 通过AuthCheck注解已经确保用户已登录
-        User loginUser = userService.getLoginUser(request);
-
-        // 校验文件
-        if (file == null || file.isEmpty()) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "文件为空");
-        }
-
+            @ModelAttribute @Valid PictureUploadRequest request,
+            HttpServletRequest httpRequest) {
+        // 获取当前登录用户
+        User loginUser = userService.getLoginUser(httpRequest);
+        
+        MultipartFile file = request.getFile();
         // 校验文件大小
         long fileSize = file.getSize();
-        // 限制文件大小为10MB
-        final long FILE_SIZE_LIMIT = 10 * 1024 * 1024L;
-        if (fileSize > FILE_SIZE_LIMIT) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "文件大小超过限制");
-        }
+        ThrowUtils.throwIf(fileSize > FILE_SIZE_LIMIT, 
+            ErrorCode.PARAMS_ERROR, "文件大小超过限制");
 
         // 校验文件类型
         String originalFilename = file.getOriginalFilename();
         String contentType = file.getContentType();
-        log.info("上传图片: 文件名={}, 类型={}, 大小={}", originalFilename, contentType, fileSize);
+        log.info("上传图片: 文件名={}, 类型={}, 大小={}", 
+            originalFilename, contentType, fileSize);
 
-        if (contentType == null || !contentType.startsWith("image/")) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "文件类型错误，仅支持图片");
-        }
+        ThrowUtils.throwIf(contentType == null || !contentType.startsWith("image/"),
+            ErrorCode.PARAMS_ERROR, "文件类型错误，仅支持图片");
 
         try {
             // 生成文件路径
@@ -116,11 +120,10 @@ public class PictureController {
             String fileExtension = getFileExtension(originalFilename);
             String filePath = String.format("images/%s%s", uuid, fileExtension);
 
-            // 上传文件
-            fileStorageService.saveFile(filePath, file.getInputStream());
-
-            // 获取文件URL
+            // 获取文件URL(拼接bucket host)
             String fileUrl = fileStorageService.getFileUrl(filePath);
+            // 上传文件到存储系统（同步上传，确保返回URL就能直接显示）
+            fileStorageService.saveFile(filePath, file.getInputStream());
 
             // 获取图片信息
             Map<String, Object> imageInfo = ImageUtils.getImageInfo(file.getInputStream());
@@ -128,12 +131,13 @@ public class PictureController {
             // 创建图片记录
             Picture picture = new Picture();
             picture.setUrl(fileUrl);
-            picture.setName(StrUtil.isNotBlank(name) ? name : originalFilename);
-            picture.setCategory(category);
-            picture.setTags(tags);
-            picture.setIntroduction(introduction);
+            picture.setName(StrUtil.isNotBlank(request.getName()) ? 
+                request.getName() : originalFilename);
+            picture.setCategory(request.getCategory());
+            picture.setTags(request.getTags());
+            picture.setIntroduction(request.getIntroduction());
             picture.setPicSize(fileSize);
-            picture.setPicFormat(fileExtension.substring(1)); // 去掉点号
+            picture.setPicFormat(fileExtension.substring(1));
             picture.setUserId(loginUser.getId());
 
             // 设置图片尺寸信息
@@ -145,14 +149,13 @@ public class PictureController {
                 picture.setPicScale((double) width / height);
             }
 
-            // 保存图片记录
-            boolean saveResult = pictureService.save(picture); // 自动回填图片ID
+            // 保存图片记录到数据库
+            boolean saveResult = pictureService.save(picture);
             ThrowUtils.throwIf(!saveResult, ErrorCode.OPERATION_ERROR, "图片信息保存失败");
 
-            // 转换为VO对象
+            // 转换为VO对象返回
             PictureVO pictureVO = new PictureVO();
             BeanUtils.copyProperties(picture, pictureVO);
-            // 默认没有关联的3D模型
             pictureVO.setHasModel(false);
 
             return ResultUtils.success(pictureVO);
@@ -164,9 +167,7 @@ public class PictureController {
 
     /**
      * 获取图片详情
-     * <p>
      * 该接口允许所有用户访问，用于获取单个图片的详细信息。
-     * </p>
      *
      * @param id 图片ID
      * @return 图片详情
@@ -175,7 +176,7 @@ public class PictureController {
     @Operation(summary = "获取图片详情", description = "根据图片ID获取图片详细信息")
     public BaseResponse<PictureVO> getPictureById(@PathVariable Long id) {
         // 校验参数
-        ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR, "图片ID不合法");
+        ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR, "图片ID不合法");
 
         // 查询图片
         Picture picture = pictureService.getById(id);
@@ -430,13 +431,13 @@ public class PictureController {
     /**
      * 获取文件扩展名
      *
-     * @param fileName 文件名
+     * @param filename 原始文件名
      * @return 文件扩展名（包含点号）
      */
-    private String getFileExtension(String fileName) {
-        if (fileName == null || fileName.isEmpty() || !fileName.contains(".")) {
-            return ".png"; // 默认扩展名
-        }
-        return fileName.substring(fileName.lastIndexOf("."));
+    private String getFileExtension(String filename) {
+        return Optional.ofNullable(filename)
+            .filter(f -> f.contains("."))
+            .map(f -> f.substring(f.lastIndexOf(".")))
+            .orElse(".jpg");
     }
 }

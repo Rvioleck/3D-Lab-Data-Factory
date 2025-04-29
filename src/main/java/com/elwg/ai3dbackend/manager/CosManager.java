@@ -3,6 +3,7 @@ package com.elwg.ai3dbackend.manager;
 import com.elwg.ai3dbackend.config.CosClientConfig;
 import com.qcloud.cos.COSClient;
 import com.qcloud.cos.model.*;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -25,13 +26,12 @@ import java.util.Map;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class CosManager {
 
-    @Autowired
-    private COSClient cosClient;
+    private final COSClient cosClient;
 
-    @Autowired
-    private CosClientConfig cosConfig;
+    private final CosClientConfig cosConfig;
 
     /**
      * 初始化COS管理器
@@ -51,18 +51,6 @@ public class CosManager {
         }
     }
 
-    /**
-     * 上传文件
-     *
-     * @param key 对象键（文件路径）
-     * @param data 文件数据
-     * @throws IOException 如果上传过程中发生错误
-     */
-    public void uploadFile(String key, byte[] data) throws IOException {
-        try (ByteArrayInputStream inputStream = new ByteArrayInputStream(data)) {
-            uploadFile(key, inputStream);
-        }
-    }
 
     /**
      * 上传文件

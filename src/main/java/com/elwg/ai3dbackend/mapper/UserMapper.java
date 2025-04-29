@@ -9,7 +9,7 @@ import org.apache.ibatis.annotations.Select;
 import java.util.List;
 
 /**
-* @author 35245
+* @author fyz
 * @description 针对表【user(用户表)】的数据库操作Mapper
 * @createDate 2025-04-13 16:42:37
 * @Entity com.elwg.ai3dbackend.model.entity.User

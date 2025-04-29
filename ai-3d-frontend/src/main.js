@@ -5,7 +5,7 @@ import { createPinia } from 'pinia'
 import { Modal, Button, Toast } from './components/common'
 
 // 导入样式
-import '@/assets/styles.css'
+import '@/assets/main.css'
 
 const app = createApp(App)
 

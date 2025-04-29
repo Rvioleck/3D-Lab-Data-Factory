@@ -1,70 +1,116 @@
 <template>
-  <div class="auth-container">
-    <div class="auth-card">
-      <div class="auth-header">
-        <div class="auth-logo">
+  <div class="login-container">
+    <!-- 背景效果 -->
+    <div class="login-bg"></div>
+    <div class="login-bg-shapes">
+      <div class="login-bg-shape"></div>
+      <div class="login-bg-shape"></div>
+      <div class="login-bg-shape"></div>
+      <div class="login-bg-shape"></div>
+    </div>
+
+    <!-- 左侧内容区 -->
+    <div class="login-content-left">
+      <div class="login-brand">
+        <div class="login-brand-logo">
           <i class="bi bi-box-fill"></i>
         </div>
-        <h1 class="auth-title">欢迎回来</h1>
-        <p class="auth-subtitle">登录您的账号继续使用</p>
+        <div class="login-brand-text">3D-Lab Data Factory</div>
       </div>
 
-      <form @submit.prevent="handleLogin">
-        <div v-if="errorMessage" class="error-message">
-          {{ errorMessage }}
-          <button type="button" @click="errorMessage = ''" class="toggle-password">
-            <i class="bi bi-x"></i>
-          </button>
-        </div>
+      <h1 class="login-headline">3D-Lab<br />Data Factory</h1>
+      <p class="login-subheadline">轻松创建、管理和分享高质量3D模型和图像</p>
 
-        <div class="form-group">
-          <div class="input-wrapper">
-            <i class="bi bi-person"></i>
-            <input
-              type="text"
-              class="form-input"
-              v-model="loginForm.userAccount"
-              placeholder="请输入账号"
-              required
-              :disabled="loading"
-            />
+      <div class="login-features">
+        <div class="login-feature">
+          <div class="login-feature-icon">
+            <i class="bi bi-magic"></i>
           </div>
+          <div class="login-feature-text">从单张图片生成高质量3D模型</div>
+        </div>
+        <div class="login-feature">
+          <div class="login-feature-icon">
+            <i class="bi bi-chat-dots"></i>
+          </div>
+          <div class="login-feature-text">进行数据分析和可视化</div>
+        </div>
+        <div class="login-feature">
+          <div class="login-feature-icon">
+            <i class="bi bi-collection"></i>
+          </div>
+          <div class="login-feature-text">管理和组织您的所有数字资产</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右侧表单区 -->
+    <div class="login-content-right">
+      <div class="login-card">
+        <div class="login-card-header">
+          <div class="login-logo">
+            <i class="bi bi-box-fill"></i>
+          </div>
+          <h1 class="login-title">欢迎回来</h1>
+          <p class="login-subtitle">登录您的账号继续使用</p>
         </div>
 
-        <div class="form-group">
-          <div class="input-wrapper">
-            <i class="bi bi-lock"></i>
-            <input
-              :type="showPassword ? 'text' : 'password'"
-              class="form-input"
-              v-model="loginForm.userPassword"
-              placeholder="请输入密码"
-              required
-              :disabled="loading"
-            />
-            <button
-              type="button"
-              class="toggle-password"
-              @click="showPassword = !showPassword"
-            >
-              <i :class="'bi ' + (showPassword ? 'bi-eye-slash' : 'bi-eye')"></i>
+        <form @submit.prevent="handleLogin">
+          <div v-if="errorMessage" class="login-error">
+            {{ errorMessage }}
+            <button type="button" @click="errorMessage = ''" class="login-close-error">
+              <i class="bi bi-x"></i>
             </button>
           </div>
-        </div>
 
-        <button type="submit" class="auth-button" :disabled="loading">
-          <span v-if="loading">
-            <i class="bi bi-arrow-repeat spin me-2"></i>
-            登录中...
-          </span>
-          <span v-else>登录</span>
-        </button>
+          <div class="login-form-group">
+            <div class="login-input-wrapper">
+              <i class="bi bi-person login-input-icon"></i>
+              <input
+                type="text"
+                class="login-input"
+                v-model="loginForm.userAccount"
+                placeholder="请输入账号"
+                required
+                :disabled="loading"
+              />
+            </div>
+          </div>
 
-        <div class="auth-link">
-          还没有账号？
-          <router-link to="/register">立即注册</router-link>
-        </div>
-      </form>
+          <div class="login-form-group">
+            <div class="login-input-wrapper">
+              <i class="bi bi-lock login-input-icon"></i>
+              <input
+                :type="showPassword ? 'text' : 'password'"
+                class="login-input"
+                v-model="loginForm.userPassword"
+                placeholder="请输入密码"
+                required
+                :disabled="loading"
+              />
+              <button
+                type="button"
+                class="login-toggle-password"
+                @click="showPassword = !showPassword"
+              >
+                <i :class="'bi ' + (showPassword ? 'bi-eye-slash' : 'bi-eye')"></i>
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" class="login-button" :disabled="loading">
+            <span v-if="loading">
+              <i class="bi bi-arrow-repeat spin me-2"></i>
+              登录中...
+            </span>
+            <span v-else>登录</span>
+          </button>
+
+          <div class="login-link">
+            还没有账号？
+            <router-link to="/register">立即注册</router-link>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
 </template>
@@ -73,7 +119,7 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import '@/assets/styles/auth.css'
+import '@/assets/login.css'
 
 const router = useRouter()
 const userStore = useUserStore()

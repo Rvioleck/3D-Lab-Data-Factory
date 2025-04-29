@@ -1,0 +1,39 @@
+@startuml
+title 图片上传方案一：先写数据库，再上传文件
+
+actor "用户" as User
+participant "前端应用" as Frontend
+participant "后端服务" as Backend
+database "数据库 (MySQL)" as DB
+participant "对象存储 (COS)" as Cloud
+
+skinparam sequenceMessageAlign center
+
+activate Frontend
+activate User
+
+== 用户操作 ==
+User -> Frontend : 选择图片并提交
+Frontend -> Backend ++ : POST /picture/upload\n(图片文件, 元数据)
+note over Backend : 验证用户身份和文件参数
+
+== 数据库操作 ==
+Backend -> Backend : 生成唯一文件名和路径
+Backend -> Backend : 构建文件URL
+Backend -> DB ++ : 创建记录(状态="待上传")
+DB --> Backend -- : 返回记录ID
+
+== 云存储操作 ==
+Backend -> Cloud ++ : 上传文件
+Cloud --> Backend -- : 上传成功
+Backend -> DB ++ : 更新状态(状态="已上传")
+DB --> Backend --
+
+== 响应用户 ==
+Backend --> Frontend -- : 返回成功响应(图片ID/URL)
+Frontend --> User : 显示上传成功
+
+deactivate User
+deactivate Frontend
+
+@enduml

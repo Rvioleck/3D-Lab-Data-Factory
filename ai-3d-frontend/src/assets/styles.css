@@ -11,18 +11,132 @@
 html, body {
   height: 100%;
   width: 100%;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  scroll-behavior: smooth;
 }
 
-/* 自定义主题样式 */
+/* 主题变量 - 现代科技风格 */
 :root {
-  --primary-color: #007bff;
-  --secondary-color: #6c757d;
-  --success-color: #28a745;
-  --danger-color: #dc3545;
-  --warning-color: #ffc107;
-  --info-color: #17a2b8;
-  --light-color: #f8f9fa;
-  --dark-color: #343a40;
+  /* 主色调 - 科技蓝 */
+  --primary-color: #3a86ff;
+  --primary-hover: #2667ff;
+  --primary-light: #e0f1ff;
+  --primary-rgb: 58, 134, 255;
+
+  /* 辅助色 - 活力紫 */
+  --secondary-color: #8338ec;
+  --secondary-hover: #7209b7;
+  --secondary-light: #f0e6ff;
+  --secondary-rgb: 131, 56, 236;
+
+  /* 强调色 - 活力橙 */
+  --accent-color: #ff9f1c;
+  --accent-hover: #ff8800;
+  --accent-light: #fff4e6;
+  --accent-rgb: 255, 159, 28;
+
+  /* 成功色 - 清新绿 */
+  --success-color: #38b000;
+  --success-hover: #008000;
+  --success-light: #e3f9e5;
+
+  /* 警告色 - 明亮黄 */
+  --warning-color: #ffbe0b;
+  --warning-hover: #faa307;
+  --warning-light: #fff8e6;
+
+  /* 错误色 - 鲜明红 */
+  --error-color: #ff006e;
+  --error-hover: #d90059;
+  --error-light: #ffe6f0;
+
+  /* 信息色 - 天空蓝 */
+  --info-color: #00b4d8;
+  --info-hover: #0096c7;
+  --info-light: #e0f7fa;
+
+  /* 中性色 */
+  --neutral-50: #f9fafb;
+  --neutral-100: #f3f4f6;
+  --neutral-200: #e5e7eb;
+  --neutral-300: #d1d5db;
+  --neutral-400: #9ca3af;
+  --neutral-500: #6b7280;
+  --neutral-600: #4b5563;
+  --neutral-700: #374151;
+  --neutral-800: #1f2937;
+  --neutral-900: #111827;
+
+  /* 背景色 */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9fafb;
+  --bg-tertiary: #f3f4f6;
+
+  /* 文本色 */
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-tertiary: #6b7280;
+  --text-disabled: #9ca3af;
+
+  /* 边框色 */
+  --border-color: #e5e7eb;
+  --border-color-hover: #d1d5db;
+
+  /* 阴影 */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+  /* 圆角 */
+  --radius-sm: 0.125rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* 过渡时间 */
+  --transition-fast: 150ms;
+  --transition-normal: 300ms;
+  --transition-slow: 500ms;
+
+  /* 玻璃态设计变量 */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  --glass-blur: 10px;
+}
+
+/* 暗色主题 */
+.dark-theme {
+  --primary-color: #4f8eff;
+  --primary-hover: #3a86ff;
+  --primary-light: #172a46;
+
+  --secondary-color: #9d4edd;
+  --secondary-hover: #8338ec;
+  --secondary-light: #2a1a3a;
+
+  --accent-color: #ffaa33;
+  --accent-hover: #ff9f1c;
+  --accent-light: #3a2a10;
+
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-tertiary: #334155;
+
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-tertiary: #94a3b8;
+  --text-disabled: #64748b;
+
+  --border-color: #334155;
+  --border-color-hover: #475569;
+
+  --glass-bg: rgba(15, 23, 42, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.1);
 }
 
 /* 通用布局类 */
@@ -39,9 +153,40 @@ html, body {
   align-items: center;
 }
 
+.flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.flex-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.grid-auto-fit {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
 /* 响应式调整 */
 @media (max-width: 768px) {
   .container {
+    padding: 0 0.75rem;
+  }
+
+  .grid-auto-fit {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
     padding: 0 0.5rem;
+  }
+
+  .grid-auto-fit {
+    grid-template-columns: 1fr;
   }
 }

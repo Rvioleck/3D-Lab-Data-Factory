@@ -17,18 +17,16 @@ export const uploadPicture = async (file, metadata = {}) => {
   try {
     const formData = new FormData()
     formData.append('file', file)
-
+    
     // 添加元数据
-    if (metadata.name) formData.append('name', metadata.name)
-    if (metadata.category) formData.append('category', metadata.category)
-    if (metadata.tags) formData.append('tags', metadata.tags)
-    if (metadata.introduction) formData.append('introduction', metadata.introduction)
+    Object.entries(metadata).forEach(([key, value]) => {
+      if (value) formData.append(key, value)
+    })
 
-    const response = await axios.post(`${API_URL}/picture/upload`, formData, {
+    const response = await apiClient.post('/api/picture/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
-      },
-      withCredentials: true
+      }
     })
 
     return response.data

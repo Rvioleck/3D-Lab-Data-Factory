@@ -30,7 +30,7 @@
 ### 2.2 架构图
 ```startuml
 @startuml
-title 3D重建流程时序图 (API端点版 - 解压ZIP)
+title 3D重建流程时序图
 
 participant "前端 (浏览器)" as Frontend
 participant "后端 - Java" as BackendJava
