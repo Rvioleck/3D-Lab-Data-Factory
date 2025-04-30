@@ -1,7 +1,8 @@
 import axios from 'axios'
 import { apiClient } from './apiClient'
 
-const API_URL = '/api'
+// API URL已经在apiClient中设置为'/api'，这里不需要重复定义
+const API_URL = ''
 
 // 创建会话
 export const createSession = async (sessionName) => {
@@ -108,7 +109,7 @@ export const streamChat = async (content, options = {}, callbacks = {}) => {
       requestBody.sessionId = sessionId
     }
 
-    const url = `${API_URL}/chat/stream`
+    const url = `/api/chat/stream`
 
     // 使用fetch API进行流式请求
     const response = await fetch(url, {

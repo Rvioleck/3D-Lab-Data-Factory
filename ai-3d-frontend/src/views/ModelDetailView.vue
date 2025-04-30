@@ -45,7 +45,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Modal } from 'bootstrap'
 import { cleanupModalState } from '@/utils/modalHelper'
-import ModelViewer from '@/components/ModelViewer.vue'
+import ModelViewer from '@/components/model/ModelViewer.vue'
 import { reconstructionApi } from '@/api/reconstruction'
 
 const API_URL = import.meta.env.VITE_API_URL || ''

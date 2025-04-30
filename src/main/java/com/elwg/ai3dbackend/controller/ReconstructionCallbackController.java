@@ -244,6 +244,9 @@ public class ReconstructionCallbackController {
             byte[] mtlFileData = null;
             byte[] textureFileData = null;
 
+            // 计算整体的模型文件大小(model.obj + model.mtl + texture.png)
+            long totalModelSize = 0;
+
             // 遍历并分类文件
             for (Map.Entry<String, byte[]> entry : extractedFiles.entrySet()) {
                 String fileName = entry.getKey();
@@ -253,14 +256,17 @@ public class ReconstructionCallbackController {
                 // 根据文件扩展名确定文件类型
                 if ("obj".equals(extension)) {
                     objFileData = fileData;
+                    totalModelSize += fileData.length;
                     log.info("Found OBJ file: {}", fileName);
                 } else if ("mtl".equals(extension)) {
                     mtlFileData = fileData;
+                    totalModelSize += fileData.length;
                     log.info("Found MTL file: {}", fileName);
                 } else if ("png".equals(extension) || "jpg".equals(extension) || "jpeg".equals(extension)) {
                     // 排除已有的pixel_images.png和xyz_images.png
                     if (!fileName.contains("pixel_images") && !fileName.contains("xyz_images")) {
                         textureFileData = fileData;
+                        totalModelSize += fileData.length;
                         log.info("Found texture file: {}", fileName);
                     }
                 }
@@ -270,7 +276,6 @@ public class ReconstructionCallbackController {
             String objFileUrl = null;
             String mtlFileUrl = null;
             String textureImageUrl = null;
-            String outputZipUrl = null;
 
             // 存储OBJ文件
             if (objFileData != null) {
@@ -296,108 +301,30 @@ public class ReconstructionCallbackController {
                 textureImageUrl = fileStorageService.getFileUrl(texturePath);
             }
 
-            // 存储原始ZIP文件
-            String zipFilePath = basePath + "output3d.zip";
-            fileStorageService.saveFile(zipFilePath, zipData);
-            outputZipUrl = fileStorageService.getFileUrl(zipFilePath);
-
-            // 3. 一次性更新数据库中的所有URL
-            // 获取或创建模型记录
-            Model model = null;
-
-            // 如果任务有关联的模型ID，尝试获取该模型
-            if (task.getResultModelId() != null) {
+            // 3. 更新数据库
+            Model model = modelService.getModelByTaskId(task.getId());
+            if (model == null && task.getResultModelId() != null) {
                 model = modelService.getById(task.getResultModelId());
             }
 
-            // 如果没有关联的模型ID或者模型不存在，尝试通过taskId查找
-            if (model == null) {
-                model = modelService.getModelByTaskId(task.getId());
-            }
-
-            // 如果仍然没有找到模型，创建一个新的
-            if (model == null) {
-                log.info("No model found for task: {}, creating new model", task.getId());
-                model = new Model();
-                model.setName("3D Model - " + task.getId());
-                model.setSourceImageId(task.getSourceImageId());
-                model.setTaskId(task.getId().toString());
-                model.setStatus("PROCESSING"); // 初始状态为处理中
-                model.setUserId(task.getUserId());
-                model.setModelFormat("OBJ");
-
-                // 设置创建时间
-                Date now = new Date();
-                model.setCreateTime(now);
-                model.setUpdateTime(now);
-            }
-
-            // 更新所有URL字段
-            if (objFileUrl != null) {
-                model.setObjFileUrl(objFileUrl);
-            }
-            if (mtlFileUrl != null) {
-                model.setMtlFileUrl(mtlFileUrl);
-            }
-            if (textureImageUrl != null) {
-                model.setTextureImageUrl(textureImageUrl);
-            }
-
-            // 检查是否已有像素图像和XYZ图像
-            String pixelImagesPath = basePath + "pixel_images.png";
-            if (fileStorageService.isFileExists(pixelImagesPath) && model.getPixelImagesUrl() == null) {
-                model.setPixelImagesUrl(fileStorageService.getFileUrl(pixelImagesPath));
-            }
-
-            String xyzImagesPath = basePath + "xyz_images.png";
-            if (fileStorageService.isFileExists(xyzImagesPath) && model.getXyzImagesUrl() == null) {
-                model.setXyzImagesUrl(fileStorageService.getFileUrl(xyzImagesPath));
-            }
-
-            // 更新时间
-            model.setUpdateTime(new Date());
-
-            // 保存或更新模型
-            boolean success;
-            if (model.getId() == null) {
-                // 新模型，需要保存
-                success = modelService.save(model);
-                if (success) {
-                    log.info("Created new model for task: {}, model ID: {}", task.getId(), model.getId());
-                    // 更新任务的结果模型ID
-                    reconstructionTaskService.updateTaskResultModel(task.getId(), model.getId());
-                } else {
-                    log.error("Failed to create model for task: {}", task.getId());
-                }
-            } else {
-                // 现有模型，需要更新
-                success = modelService.updateById(model);
-                if (success) {
-                    log.info("Updated existing model ID: {} with OBJ/MTL/texture URLs", model.getId());
-                } else {
-                    log.error("Failed to update model ID: {} for task: {}", model.getId(), task.getId());
-                }
+            if (model != null) {
+                if (objFileUrl != null) model.setObjFileUrl(objFileUrl);
+                if (mtlFileUrl != null) model.setMtlFileUrl(mtlFileUrl);
+                if (textureImageUrl != null) model.setTextureImageUrl(textureImageUrl);
+                model.setModelSize(totalModelSize);
+                model.setUpdateTime(new Date());
+                modelService.updateById(model);
             }
 
             // 4. 发送SSE消息
-            // 发送OBJ文件的SSE消息
             if (objFileUrl != null) {
                 eventStreamService.sendResultEvent(task.getId().toString(), "model.obj", objFileUrl);
             }
-
-            // 发送MTL文件的SSE消息
             if (mtlFileUrl != null) {
                 eventStreamService.sendResultEvent(task.getId().toString(), "model.mtl", mtlFileUrl);
             }
-
-            // 发送纹理文件的SSE消息
             if (textureImageUrl != null) {
                 eventStreamService.sendResultEvent(task.getId().toString(), "texture.png", textureImageUrl);
-            }
-
-            // 发送ZIP文件的SSE消息
-            if (outputZipUrl != null) {
-                eventStreamService.sendResultEvent(task.getId().toString(), "output3d.zip", outputZipUrl);
             }
 
         } catch (Exception e) {

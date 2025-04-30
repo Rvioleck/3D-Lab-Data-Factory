@@ -48,8 +48,6 @@ public class ModelController {
     @Resource
     private UserService userService;
 
-    @Resource
-    private PictureService pictureService;
 
     /**
      * 获取模型详情

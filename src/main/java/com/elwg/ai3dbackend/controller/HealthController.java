@@ -16,10 +16,8 @@ import java.util.Map;
 
 /**
  * 健康检查控制器
- * <p>
  * 用于监控应用程序的健康状态和运行情况。提供简单和详细两种健康检查接口，
  * 可用于服务健康监控、负载均衡健康检查、运行状态监控等场景。
- * </p>
  */
 @RestController
 @RequestMapping("/health")

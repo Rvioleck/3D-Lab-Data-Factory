@@ -68,7 +68,8 @@ loop 上传解压后的文件
 end
 BackendJava -> Database ++ : 更新任务记录\n(obj, mtl, texture URLs)
 Database --> BackendJava --
-BackendJava -> Frontend : SSE 推送: 3D模型文件 URLs
+BackendJava -> Frontend : SSE 推送: 各个模型文件 URLs
+Frontend -> Frontend : 用户下载时打包ZIP
 deactivate BackendJava
 
 PythonService -> BackendJava ++ : POST /callback/status\n(含 TaskID, Status: COMPLETED/FAILED)

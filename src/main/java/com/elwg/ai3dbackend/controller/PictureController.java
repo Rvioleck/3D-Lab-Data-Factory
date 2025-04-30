@@ -31,7 +31,6 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.util.*;
@@ -205,45 +204,22 @@ public class PictureController {
         // 限制爬虫
         ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR, "页面大小超过限制");
 
-        // 构建查询条件
+        // 构建查询条件并执行查询
         LambdaQueryWrapper<Picture> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.like(StrUtil.isNotBlank(pictureQueryRequest.getName()), Picture::getName, pictureQueryRequest.getName())
+                    .eq(StrUtil.isNotBlank(pictureQueryRequest.getCategory()), Picture::getCategory, pictureQueryRequest.getCategory())
+                    .like(StrUtil.isNotBlank(pictureQueryRequest.getTags()), Picture::getTags, pictureQueryRequest.getTags())
+                    .eq(pictureQueryRequest.getUserId() != null && pictureQueryRequest.getUserId() > 0, Picture::getUserId, pictureQueryRequest.getUserId())
+                    .orderByDesc(Picture::getCreateTime);
 
-        // 根据名称查询
-        String name = pictureQueryRequest.getName();
-        if (StrUtil.isNotBlank(name)) {
-            queryWrapper.like(Picture::getName, name);
-        }
-
-        // 根据分类查询
-        String category = pictureQueryRequest.getCategory();
-        if (StrUtil.isNotBlank(category)) {
-            queryWrapper.eq(Picture::getCategory, category);
-        }
-
-        // 根据标签查询
-        String tags = pictureQueryRequest.getTags();
-        if (StrUtil.isNotBlank(tags)) {
-            queryWrapper.like(Picture::getTags, tags);
-        }
-
-        // 根据用户ID查询
-        Long userId = pictureQueryRequest.getUserId();
-        if (userId != null && userId > 0) {
-            queryWrapper.eq(Picture::getUserId, userId);
-        }
-
-        // 根据创建时间排序
-        queryWrapper.orderByDesc(Picture::getCreateTime);
-
-        // 分页查询
+        // 执行分页查询
         Page<Picture> picturePage = pictureService.page(new Page<>(current, size), queryWrapper);
 
-        // 获取图片ID列表
+        // 获取所有图片ID，查询是否有关联的3D模型
         List<Long> pictureIds = picturePage.getRecords().stream()
                 .map(Picture::getId)
-                .collect(Collectors.toList());
+                .toList();
 
-        // 查询图片是否有关联的3D模型
         Map<Long, Boolean> pictureHasModelMap = new HashMap<>();
         if (!pictureIds.isEmpty()) {
             for (Long pictureId : pictureIds) {
@@ -251,16 +227,13 @@ public class PictureController {
             }
         }
 
-        // 转换为VO对象
-        Page<PictureVO> pictureVOPage = new Page<>(picturePage.getCurrent(), picturePage.getSize(), picturePage.getTotal());
-        List<PictureVO> pictureVOList = picturePage.getRecords().stream().map(picture -> {
+        // 转换为VO并设置hasModel字段
+        Page<PictureVO> pictureVOPage = (Page<PictureVO>) picturePage.convert(picture -> {
             PictureVO pictureVO = new PictureVO();
             BeanUtils.copyProperties(picture, pictureVO);
-            // 设置是否有关联的3D模型
             pictureVO.setHasModel(pictureHasModelMap.getOrDefault(picture.getId(), false));
             return pictureVO;
-        }).collect(Collectors.toList());
-        pictureVOPage.setRecords(pictureVOList);
+        });
 
         return ResultUtils.success(pictureVOPage);
     }

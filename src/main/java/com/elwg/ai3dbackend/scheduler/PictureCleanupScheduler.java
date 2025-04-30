@@ -15,9 +15,9 @@ public class PictureCleanupScheduler {
     private PictureService pictureService;
 
     /**
-     * 每天小时执行清理任务
+     * 每小时执行清理任务
      */
-    @Scheduled(cron = "0 * * * * ?")
+    @Scheduled(cron = "0 0 */1 * * ?")  // 修改后的cron表达式
     public void schedulePictureCleanup() {
         log.info("Starting scheduled picture cleanup task");
         try {

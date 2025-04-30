@@ -14,8 +14,11 @@ export const useChatStore = defineStore('chat', () => {
   // State
   const sessions = ref([])
   const currentSessionId = ref(null)
-  const messages = ref({}) // Map of sessionId -> messages array
+  const messages = ref({
+    'temp-session': [] // 初始化临时会话消息数组
+  }) // Map of sessionId -> messages array
   const streaming = ref(false)
+  const streamingMessage = ref('')
   const loading = ref(false)
   const error = ref(null)
 
@@ -337,8 +340,10 @@ export const useChatStore = defineStore('chat', () => {
   /**
    * Set current session
    * @param {string} sessionId - Session ID
+   * @param {Object} options - Options
+   * @param {boolean} options.keepMessages - Whether to keep temporary messages
    */
-  function setCurrentSession(sessionId) {
+  function setCurrentSession(sessionId, options = {}) {
     currentSessionId.value = sessionId
 
     // Load messages if not already loaded
@@ -347,12 +352,63 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  /**
+   * Start streaming mode
+   */
+  function startStreaming() {
+    streaming.value = true
+    streamingMessage.value = ''
+  }
+
+  /**
+   * Finish streaming mode
+   * @param {Object} options - Options
+   * @param {boolean} options.keepContent - Whether to keep streaming content
+   */
+  function finishStreaming(options = {}) {
+    streaming.value = false
+    if (!options.keepContent) {
+      streamingMessage.value = ''
+    }
+  }
+
+  /**
+   * Append content to streaming message
+   * @param {string} content - Content to append
+   */
+  function appendStreamingContent(content) {
+    streamingMessage.value += content
+  }
+
+  /**
+   * Add user message
+   * @param {Object} params - Message parameters
+   * @param {string} params.sessionId - Session ID
+   * @param {string} params.content - Message content
+   */
+  function addUserMessage(params) {
+    const { sessionId, content } = params
+
+    if (!messages.value[sessionId]) {
+      messages.value[sessionId] = []
+    }
+
+    messages.value[sessionId].push({
+      id: `temp-user-${Date.now()}`,
+      sessionId,
+      role: 'user',
+      content,
+      createTime: new Date().toISOString()
+    })
+  }
+
   return {
     // State
     sessions,
     currentSessionId,
     messages,
     streaming,
+    streamingMessage,
     loading,
     error,
 
@@ -369,6 +425,10 @@ export const useChatStore = defineStore('chat', () => {
     deleteMessage,
     sendMessage,
     streamMessage,
-    setCurrentSession
+    setCurrentSession,
+    startStreaming,
+    finishStreaming,
+    appendStreamingContent,
+    addUserMessage
   }
 })

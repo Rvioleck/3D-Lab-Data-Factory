@@ -17,13 +17,13 @@ export const uploadPicture = async (file, metadata = {}) => {
   try {
     const formData = new FormData()
     formData.append('file', file)
-    
+
     // 添加元数据
     Object.entries(metadata).forEach(([key, value]) => {
       if (value) formData.append(key, value)
     })
 
-    const response = await apiClient.post('/api/picture/upload', formData, {
+    const response = await apiClient.post('/picture/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }

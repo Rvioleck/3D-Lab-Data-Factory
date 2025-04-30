@@ -2,7 +2,6 @@ package com.elwg.ai3dbackend.model.dto.picture;
 
 import com.elwg.ai3dbackend.common.PageRequest;
 import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -30,13 +29,13 @@ public class PictureQueryRequest extends PageRequest implements Serializable {
     /**
      * 分类
      */
-    @Schema(description = "分类", example = "家具")
+    @Schema(description = "分类", example = "容器")
     private String category;
 
     /**
      * 标签
      */
-    @Schema(description = "标签", example = "桌子,椅子")
+    @Schema(description = "标签", example = "锥形瓶,100ml")
     private String tags;
 
     /**

@@ -1,5 +1,5 @@
 <template>
-  <div class="image-library-view">
+  <div class="image-library">
     <div class="container mt-4">
       <div class="row">
         <div class="col-md-12 text-center mb-4">
@@ -263,7 +263,7 @@ import { useStore } from '@/utils/storeCompat'
 import { useRouter } from 'vue-router'
 import { Modal } from 'bootstrap'
 import debounce from 'lodash/debounce'
-import { cleanupModals } from '@/utils/modalFix'
+import { cleanupModalState } from '@/utils/modalFix.js'
 import {
   uploadPicture,
   listPictureByPage,
@@ -357,18 +357,15 @@ export default {
     const loadImages = async () => {
       loading.value = true
       try {
-        // 构建查询参数
         const params = {
           current: currentPage.value,
           pageSize: pageSize.value
         }
 
-        // 添加搜索条件
         if (searchQuery.value) {
           params.name = searchQuery.value
         }
 
-        // 调用API获取图片列表
         const response = await listPictureByPage(params)
 
         if (response.code === 0 && response.data) {
@@ -376,11 +373,13 @@ export default {
           totalItems.value = response.data.total || 0
         } else {
           console.error('加载图片失败:', response.message)
+          alert('加载图片失败: ' + (response.message || '未知错误'))
           images.value = []
           totalItems.value = 0
         }
       } catch (error) {
         console.error('加载图片失败:', error)
+        alert('加载图片失败: ' + (error?.response?.data?.message || error.message || '未知错误'))
         images.value = []
         totalItems.value = 0
       } finally {
@@ -493,7 +492,7 @@ export default {
           if (uploadModal.value) {
             uploadModal.value.hide()
             // 清除模态框背景
-            setTimeout(cleanupModals, 100)
+            setTimeout(cleanupModalState, 100)
           }
 
           // 重新加载图片列表
@@ -571,7 +570,7 @@ export default {
           if (deleteConfirmModal.value) {
             deleteConfirmModal.value.hide()
             // 清除模态框背景
-            setTimeout(cleanupModals, 100)
+            setTimeout(cleanupModalState, 100)
           }
 
           // 重新加载图片列表
@@ -638,7 +637,7 @@ export default {
       loadTags()
 
       // 初始化时清除模态框背景
-      cleanupModals()
+      cleanupModalState()
     })
 
     return {

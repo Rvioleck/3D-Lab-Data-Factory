@@ -224,6 +224,7 @@
 
 <script>
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import { useStore } from '@/utils/storeCompat'
 import ChatSession from '../components/chat/ChatSession.vue'
 import ChatMessage from '../components/chat/ChatMessage.vue'
@@ -243,6 +244,7 @@ export default {
     SkeletonLoader
   },
   setup() {
+    const router = useRouter()
     const store = useStore()
     const messagesContainer = ref(null)
     const messageTextarea = ref(null)
@@ -273,6 +275,21 @@ export default {
 
     // 加载会话列表
     const loadSessions = async () => {
+      // 检查用户是否登录
+      if (!store.getters['user/isLoggedIn']) {
+        console.warn('用户未登录，无法加载会话列表')
+        // 重定向到登录页面
+        router.push('/login')
+        return
+      }
+
+      // 检查用户是否为管理员
+      if (!isAdmin.value) {
+        console.warn('非管理员用户无法访问聊天功能')
+        router.push('/home')
+        return
+      }
+
       isLoadingSessions.value = true
       try {
         await store.dispatch('chat/fetchSessions')
@@ -282,6 +299,14 @@ export default {
         }
       } catch (error) {
         console.error('加载会话列表失败:', error)
+
+        // 如果是未登录错误，重定向到登录页面
+        if (error.message === '未登录' || error.code === 40100) {
+          console.warn('用户未登录，重定向到登录页面')
+          router.push('/login')
+          return
+        }
+
         alert('加载会话列表失败: ' + error)
       } finally {
         isLoadingSessions.value = false
@@ -316,6 +341,21 @@ export default {
 
     // 加载消息
     const loadMessages = async (sessionId) => {
+      // 检查用户是否登录
+      if (!store.getters['user/isLoggedIn']) {
+        console.warn('用户未登录，无法加载消息')
+        // 重定向到登录页面
+        router.push('/login')
+        return
+      }
+
+      // 检查用户是否为管理员
+      if (!isAdmin.value) {
+        console.warn('非管理员用户无法访问聊天功能')
+        router.push('/home')
+        return
+      }
+
       isLoadingMessages.value = true
       try {
         console.log('开始加载会话消息, sessionId:', sessionId)
@@ -332,6 +372,14 @@ export default {
         scrollToBottom(true)
       } catch (error) {
         console.error('加载消息失败:', error)
+
+        // 如果是未登录错误，重定向到登录页面
+        if (error.message === '未登录' || error.code === 40100) {
+          console.warn('用户未登录，重定向到登录页面')
+          router.push('/login')
+          return
+        }
+
         // 显示更详细的错误信息
         if (error.response) {
           console.error('响应数据:', error.response.data)
@@ -415,8 +463,8 @@ export default {
             },
             onDone: async () => {
               // 保存当前的流式消息内容
-              const aiContent = store.getters['chat/streamingMessage']
-              console.log('流式响应完成，内容长度:', aiContent.length)
+              const aiContent = store.getters['chat/streamingMessage'] || ''
+              console.log('流式响应完成，内容长度:', aiContent.length || 0)
 
               // 完成流式响应，但保留流式消息内容
               store.dispatch('chat/finishStreaming', { keepContent: true })
@@ -599,8 +647,23 @@ export default {
       }
     })
 
-    // 组件挂载时加载会话列表并添加滚动事件监听
+    // 组件挂载时检查用户登录状态并加载会话列表
     onMounted(() => {
+      // 检查用户是否登录
+      if (!store.getters['user/isLoggedIn']) {
+        console.warn('用户未登录，重定向到登录页面')
+        router.push('/login')
+        return
+      }
+
+      // 检查用户是否为管理员
+      if (!isAdmin.value) {
+        console.warn('非管理员用户无法访问聊天功能')
+        router.push('/home')
+        return
+      }
+
+      // 加载会话列表
       loadSessions()
 
       // 添加滚动事件监听

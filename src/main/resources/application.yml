@@ -108,3 +108,8 @@ cos:
 milvus:
   host: 127.0.0.1
   port: 19530
+
+#logging:
+#  level:
+#    org.springframework: DEBUG
+#    com.elwg.ai3dbackend: DEBUG
