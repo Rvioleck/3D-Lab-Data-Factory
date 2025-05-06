@@ -33,7 +33,10 @@ const userStore = useUserStore()
 // User state
 const isLoggedIn = computed(() => userStore.isLoggedIn)
 const currentUser = computed(() => userStore.user)
-const isAdmin = computed(() => userStore.isAdmin)
+const isAdmin = computed(() => {
+  console.log('App isAdmin check:', userStore.isAdmin)
+  return userStore.isAdmin
+})
 
 // Theme settings
 const isDarkTheme = ref(localStorage.getItem('theme') === 'dark')

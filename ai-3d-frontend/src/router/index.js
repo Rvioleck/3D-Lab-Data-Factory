@@ -114,6 +114,10 @@ router.beforeEach(async (to, from, next) => {
   const finalLoginStatus = userStore.isLoggedIn
   const isAdmin = userStore.isAdmin
 
+  console.log('Router guard - isLoggedIn:', finalLoginStatus)
+  console.log('Router guard - isAdmin:', isAdmin)
+  console.log('Router guard - user:', userStore.user)
+
   // Handle route access based on auth requirements
   if (to.meta.requiresAuth && !finalLoginStatus) {
     // Redirect to login if auth required but not logged in

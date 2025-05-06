@@ -250,7 +250,10 @@ export default {
     const messageTextarea = ref(null)
 
     // 检查用户是否为管理员
-    const isAdmin = computed(() => store.getters['user/isAdmin'])
+    const isAdmin = computed(() => {
+      console.log('ChatView isAdmin check:', store.getters['user/isAdmin'])
+      return store.getters['user/isAdmin']
+    })
 
     // 会话相关
     const isLoadingSessions = ref(false)

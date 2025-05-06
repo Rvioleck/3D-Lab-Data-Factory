@@ -23,8 +23,11 @@ export const useStore = () => {
     getters: {
       // User getters
       'user/currentUser': userStore.user,
-      'user/isLoggedIn': computed(() => !!userStore.user.value),
-      'user/isAdmin': computed(() => userStore.user.value?.userRole === 'admin'),
+      'user/isLoggedIn': computed(() => !!userStore.user),
+      'user/isAdmin': computed(() => {
+        console.log('storeCompat isAdmin check - user:', userStore.user)
+        return userStore.user?.userRole === 'admin'
+      }),
 
       // Chat getters
       'chat/sessions': chatStore.sortedSessions,
