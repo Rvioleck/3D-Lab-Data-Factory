@@ -135,7 +135,7 @@ public class ReconstructionController {
         } catch (Exception e) {
             log.error("Failed to create reconstruction task", e);
             ThrowUtils.throwIf(true, ErrorCode.SYSTEM_ERROR, "创建重建任务失败：" + e.getMessage());
-            return null; // 这行代码不会执行，因为ThrowUtils会抛出异常
+            return null;
         }
     }
 
