@@ -541,9 +541,27 @@ export default {
       })
     }
 
-    const viewModel = (image) => {
-      if (image.modelId) {
-        router.push(`/models/${image.modelId}`)
+    const viewModel = async (image) => {
+      try {
+        // 显示加载状态
+        loading.value = true
+
+        // 直接使用apiClient调用正确的API路径
+        const { apiClient } = await import('@/api/apiClient')
+        const response = await apiClient.get(`/model/image/${image.id}`)
+
+        if (response.data && response.data.code === 0 && response.data.data) {
+          // 导航到模型详情页
+          router.push(`/models/${response.data.data.id}`)
+        } else {
+          console.error('获取模型信息失败:', response.data?.message || '未知错误')
+          alert('获取模型信息失败，请稍后再试')
+        }
+      } catch (error) {
+        console.error('查看模型失败:', error)
+        alert('查看模型失败: ' + (error.message || '未知错误'))
+      } finally {
+        loading.value = false
       }
     }
 

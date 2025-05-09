@@ -79,7 +79,6 @@ public class ReconstructionController {
      * 创建3D重建任务
      *
      * @param imageId 图片ID
-     * @param name    模型名称（可选）
      * @param request HTTP请求
      * @return 任务ID和SSE URL
      */
@@ -88,7 +87,6 @@ public class ReconstructionController {
     @AuthCheck(mustRole = "admin")
     public BaseResponse<ReconstructionUploadResponse> createReconstructionTask(
             @RequestParam("imageId") Long imageId,
-            @RequestParam(value = "name", required = false) String name,
             HttpServletRequest request) {
 
         // 获取当前登录用户

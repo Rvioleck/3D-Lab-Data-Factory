@@ -27,8 +27,8 @@ export const reconstructionApi = {
     `${apiClient.defaults.baseURL}/reconstruction/files/${taskId}/${fileName}`,
 
   getModelById: (modelId) =>
-    apiClient.get(`/reconstruction/model/${modelId}`),
+    apiClient.get(`/model/${modelId}`),
 
   deleteModel: (modelId) =>
-    apiClient.delete(`/reconstruction/model/${modelId}`)
+    apiClient.post(`/model/delete`, { id: modelId })
 }

@@ -238,13 +238,15 @@ export default {
 
       loadingModel.value = true
       try {
-        const response = await getModelByImageId(imageId)
+        // 直接使用apiClient调用正确的API路径
+        const { apiClient } = await import('@/api/apiClient')
+        const response = await apiClient.get(`/model/image/${imageId}`)
 
-        if (response.code === 0) {
-          relatedModel.value = response.data
+        if (response.data && response.data.code === 0 && response.data.data) {
+          relatedModel.value = response.data.data
           console.log('关联模型:', relatedModel.value)
         } else {
-          console.log('没有找到关联模型:', response.message)
+          console.log('没有找到关联模型:', response.data?.message || '未知原因')
           relatedModel.value = null
         }
       } catch (error) {
