@@ -111,7 +111,7 @@ export const getModelByImageId = async (imageId) => {
     // 确保ID是字符串类型
     const idStr = String(imageId)
     const response = await apiClient.get(`/model/image/${idStr}`)
-    return response.data
+    return response.data  // 返回原始响应数据
   } catch (error) {
     console.error('获取图片关联模型失败:', error)
     throw error.response?.data || { message: error.message || '网络错误，请稍后重试' }

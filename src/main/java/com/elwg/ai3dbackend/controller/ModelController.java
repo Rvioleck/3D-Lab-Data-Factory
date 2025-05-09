@@ -274,4 +274,32 @@ public class ModelController {
 
         return ResultUtils.success(modelVOList);
     }
+
+    /**
+     * 根据图片ID获取关联的模型
+     * <p>
+     * 该接口允许所有用户访问，用于获取与指定图片关联的3D模型。
+     * </p>
+     *
+     * @param imageId 图片ID
+     * @return 模型信息
+     */
+    @GetMapping("/image/{imageId}")
+    @Operation(summary = "根据图片ID获取关联的模型", description = "获取与指定图片关联的3D模型")
+    public BaseResponse<ModelVO> getModelByImageId(@PathVariable Long imageId) {
+        // 校验参数
+        ThrowUtils.throwIf(imageId == null || imageId <= 0, ErrorCode.PARAMS_ERROR, "图片ID不合法");
+
+        // 查询模型
+        Model model = modelService.getModelBySourceImageId(imageId);
+        if (model == null) {
+            return ResultUtils.success(null);
+        }
+
+        // 转换为VO对象
+        ModelVO modelVO = new ModelVO();
+        BeanUtils.copyProperties(model, modelVO);
+
+        return ResultUtils.success(modelVO);
+    }
 }
