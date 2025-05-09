@@ -138,7 +138,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 ErrorCode.PARAMS_ERROR, "参数为空");
         ThrowUtils.throwIf(userAccount.length() < 4,
                 ErrorCode.PARAMS_ERROR, "账号错误");
-        ThrowUtils.throwIf(userPassword.length() < 8,
+        ThrowUtils.throwIf(userPassword.length() < 6,
                 ErrorCode.PARAMS_ERROR, "密码错误");
         // 2. 加密密码
         String encryptPassword = getEncryptPassword(userPassword);
