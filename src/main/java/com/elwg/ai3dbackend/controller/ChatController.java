@@ -224,18 +224,13 @@ public class ChatController {
         // 2. 设置SSE
         SseEmitter emitter = new SseEmitter(180000L); // 3 minutes timeout
         // 3. 设置错误处理
-        emitter.onTimeout(() -> emitter.complete());
-        emitter.onError((ex) -> emitter.completeWithError(ex));
+        emitter.onTimeout(emitter::complete);
+        emitter.onError(emitter::completeWithError);
         // 4. 如果是首次消息，则sessionId传null，自动创建会话
         Long sessionId = null;
         if (!chatRequest.getFirst() && chatRequest.getSessionId() != null) {
             // 如果不是首次消息，并且提供了sessionId
-            try {
-                sessionId = Long.parseLong(chatRequest.getSessionId());
-            } catch (NumberFormatException e) {
-                // 如果转换失败，则使用null，会自动创建新会话
-                sessionId = null;
-            }
+            sessionId = Long.parseLong(chatRequest.getSessionId());
         }
         // 5. 调用统一的流式消息方法
         chatService.streamMessage(sessionId, userId, chatRequest.getMessage(), emitter);

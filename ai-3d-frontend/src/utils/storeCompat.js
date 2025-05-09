@@ -24,17 +24,14 @@ export const useStore = () => {
       // User getters
       'user/currentUser': userStore.user,
       'user/isLoggedIn': computed(() => !!userStore.user),
-      'user/isAdmin': computed(() => {
-        console.log('storeCompat isAdmin check - user:', userStore.user)
-        return userStore.user?.userRole === 'admin'
-      }),
+      'user/isAdmin': computed(() => userStore.isAdmin),
 
       // Chat getters
       'chat/sessions': chatStore.sortedSessions,
-      'chat/currentSessionId': chatStore.currentSessionId,
-      'chat/messages': chatStore.sortedMessages,
-      'chat/isStreaming': chatStore.streaming,
-      'chat/streamingMessage': chatStore.streamingMessage?.value || ''
+      'chat/currentSessionId': computed(() => chatStore.currentSessionId),
+      'chat/messages': chatStore.currentMessages,
+      'chat/isStreaming': computed(() => chatStore.isStreaming),
+      'chat/streamingMessage': computed(() => chatStore.streamingContent)
     },
 
     // Vuex-compatible dispatch
@@ -61,46 +58,46 @@ export const useStore = () => {
       if (namespace === 'chat') {
         switch (method) {
           case 'createSession':
-            return await chatStore.createSession(payload)
+            // Not needed in new implementation
+            return null
           case 'loadSessions':
-            return await chatStore.loadSessions()
+          case 'fetchSessions':
+            return await chatStore.fetchSessions()
           case 'loadMessages':
-            return await chatStore.loadMessages(payload)
+          case 'fetchMessages':
+            return await chatStore.fetchMessages(payload)
           case 'deleteSession':
             return await chatStore.deleteSession(payload)
           case 'deleteMessage':
             return await chatStore.deleteMessage(payload)
           case 'sendMessage':
-            return await chatStore.sendMessage(payload)
+            if (typeof payload === 'string') {
+              return await chatStore.sendMessage(payload)
+            } else {
+              return await chatStore.sendMessage(payload.content, payload)
+            }
           case 'streamMessage':
-            return await chatStore.streamMessage(payload)
+            if (typeof payload === 'string') {
+              return await chatStore.sendMessage(payload)
+            } else {
+              return await chatStore.sendMessage(payload.content, payload)
+            }
           case 'setCurrentSession':
             return chatStore.setCurrentSession(payload)
-          case 'fetchSessions':
-            return await chatStore.loadSessions()
-          case 'fetchMessages':
-            return await chatStore.loadMessages(payload)
           case 'startStreaming':
-            return chatStore.streaming = true
+            // Not needed in new implementation
+            return true
           case 'finishStreaming':
-            return chatStore.streaming = false
+            // Not needed in new implementation
+            return null
           case 'appendStreamingContent':
-            // 确保streamingMessage是一个ref
-            if (chatStore.streamingMessage && typeof chatStore.streamingMessage === 'object') {
-              if (chatStore.streamingMessage.value === undefined) {
-                chatStore.streamingMessage.value = ''
-              }
-              chatStore.streamingMessage.value += payload
-            } else {
-              console.error('streamingMessage不是一个ref对象:', chatStore.streamingMessage)
-            }
+            // Not needed in new implementation
             return null
           case 'ADD_MESSAGE':
-            if (!chatStore.messages.value['temp-session']) {
-              chatStore.messages.value['temp-session'] = []
-            }
-            chatStore.messages.value['temp-session'].push(payload)
+            // Not needed in new implementation
             return null
+          case 'startNewChat':
+            return chatStore.startNewChat()
         }
       }
 
@@ -123,37 +120,13 @@ export const useStore = () => {
       if (namespace === 'chat') {
         switch (method) {
           case 'ADD_MESSAGE':
-            // 确保messages是一个对象
-            if (typeof chatStore.messages.value !== 'object' || chatStore.messages.value === null) {
-              chatStore.messages.value = {}
-            }
-            // 确保temp-session是一个数组
-            if (!chatStore.messages.value['temp-session']) {
-              chatStore.messages.value['temp-session'] = []
-            }
-            chatStore.messages.value['temp-session'].push(payload)
+            // Not needed in new implementation
             return
           case 'SET_MESSAGES':
-            // 确保messages是一个对象
-            if (typeof chatStore.messages.value !== 'object' || chatStore.messages.value === null) {
-              chatStore.messages.value = {}
-            }
-            if (Array.isArray(payload)) {
-              chatStore.messages.value['temp-session'] = payload
-            }
+            // Not needed in new implementation
             return
           case 'UPDATE_TEMP_MESSAGES_SESSION_ID':
-            // 确保messages是一个对象
-            if (typeof chatStore.messages.value !== 'object' || chatStore.messages.value === null) {
-              chatStore.messages.value = {}
-              return
-            }
-            // 更新临时消息的会话ID
-            if (chatStore.messages.value['temp-session'] && chatStore.messages.value['temp-session'].length > 0) {
-              const messages = chatStore.messages.value['temp-session']
-              chatStore.messages.value[payload] = messages
-              delete chatStore.messages.value['temp-session']
-            }
+            // Not needed in new implementation
             return
         }
       }
@@ -171,7 +144,8 @@ export const useStore = () => {
         sessions: chatStore.sessions,
         currentSessionId: chatStore.currentSessionId,
         messages: chatStore.messages,
-        isStreaming: chatStore.streaming
+        isStreaming: chatStore.isStreaming,
+        isNewChat: chatStore.isNewChat
       }
     }
   }

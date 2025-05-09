@@ -1,0 +1,67 @@
+@startuml
+title AI聊天功能时序图
+
+participant "前端 (浏览器)" as Frontend
+participant "后端 - Java" as BackendJava
+participant "ChatService" as ChatService
+participant "DeepSeek服务" as DeepSeekService
+participant "数据库 (MySQL)" as Database
+
+skinparam sequenceMessageAlign center
+
+activate Frontend
+
+== 创建会话 ==
+Frontend -> BackendJava ++ : POST /chat/session\n(sessionName)
+BackendJava -> ChatService ++ : createSession(userId, sessionName)
+ChatService -> Database ++ : 插入会话记录\n(userId, sessionName)
+Database --> ChatService -- : 返回会话ID
+ChatService --> BackendJava -- : 返回会话信息
+BackendJava --> Frontend -- : 返回会话详情
+
+== 发送消息（非流式） ==
+Frontend -> BackendJava ++ : POST /chat/message\n(ChatRequest)
+BackendJava -> ChatService ++ : sendMessage(sessionId, userId, message)
+ChatService -> Database ++ : 插入用户消息\n(sessionId, userId, message)
+Database --> ChatService -- : 返回消息ID
+ChatService -> ChatService : 获取历史消息
+ChatService -> DeepSeekService ++ : chatCompletion(历史消息)
+DeepSeekService --> ChatService -- : AI回复内容
+ChatService -> ChatService : 异步保存AI回复
+ChatService --> BackendJava -- : 返回AI消息
+BackendJava --> Frontend -- : 返回AI回复详情
+
+== 流式发送消息 ==
+Frontend -> BackendJava ++ : POST /chat/stream\n(ChatRequest)
+BackendJava -> ChatService ++ : streamMessage(sessionId, userId, message, emitter)
+ChatService -> Database ++ : 插入用户消息\n(sessionId, userId, message)
+Database --> ChatService -- : 返回消息ID
+ChatService -> ChatService : 获取历史消息
+ChatService -> DeepSeekService ++ : 流式chatCompletion(历史消息)
+DeepSeekService -> ChatService : 实时响应chunk
+ChatService -> Frontend : SSE 推送: chunk
+DeepSeekService --> ChatService -- : 响应完成
+ChatService -> ChatService : 异步保存完整AI回复
+ChatService -> Frontend : SSE 推送: [DONE]
+
+== 删除会话 ==
+Frontend -> BackendJava ++ : DELETE /chat/session/{sessionId}
+BackendJava -> ChatService ++ : deleteSession(sessionId)
+ChatService -> Database ++ : 删除会话记录\n(sessionId)
+Database --> ChatService -- : 删除结果
+ChatService --> BackendJava -- : 删除结果
+BackendJava --> Frontend -- : 返回删除结果
+
+== 删除消息 ==
+Frontend -> BackendJava ++ : DELETE /chat/message/{messageId}
+BackendJava -> ChatService ++ : deleteMessage(messageId, userId)
+ChatService -> Database ++ : 验证消息归属\n(messageId, userId)
+Database --> ChatService -- : 验证结果
+ChatService -> Database ++ : 删除消息记录\n(messageId)
+Database --> ChatService -- : 删除结果
+ChatService --> BackendJava -- : 删除结果
+BackendJava --> Frontend -- : 返回删除结果
+
+deactivate Frontend
+
+@enduml

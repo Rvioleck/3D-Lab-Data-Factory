@@ -6,7 +6,7 @@
 
 ## 基础信息
 
-- 基础路径: `/`（注意：3D重建相关接口以`/api`开头）
+- 基础路径: `/` (context-path: `/api`)
 - 服务端口: 8123
 - 所有接口返回格式统一为：
 ```json
@@ -448,9 +448,74 @@ data: [DONE]
 ```
 - 说明：
   - 响应会以流式方式返回，每个数据块以 `data: ` 开头
+  - 每个数据块包含纯文本内容，不是JSON格式
   - 最后会发送 `data: [DONE]` 表示响应结束
   - 客户端需要使用 EventSource 或 fetch API 来处理流式响应
   - 如果发生错误，连接会被关闭，客户端需要处理错误情况
+
+#### SSE响应编码格式详解
+
+1. **基本格式**：
+   - 每个响应块都是纯文本格式，以 `data: ` 开头
+   - 每个块之间用空行分隔（`\n\n`）
+   - 最后一个块是 `data: [DONE]`，表示流式响应结束
+
+2. **内容处理**：
+   - 响应内容可能包含Markdown格式的文本，包括代码块、链接、列表等
+   - 代码块使用 \`\`\` 标记，例如：
+     ```
+     data: ```javascript
+     data: function hello() {
+     data:   console.log("Hello world");
+     data: }
+     data: ```
+     ```
+   - 客户端需要将接收到的所有块（除了`[DONE]`）拼接起来，然后进行Markdown解析
+
+3. **客户端解析示例**：
+   ```javascript
+   // 使用fetch API处理SSE
+   const response = await fetch('/chat/stream', {
+     method: 'POST',
+     headers: {
+       'Content-Type': 'application/json',
+       'Accept': 'text/event-stream'
+     },
+     body: JSON.stringify(requestBody)
+   });
+
+   const reader = response.body.getReader();
+   const decoder = new TextDecoder('utf-8');
+   let buffer = '';
+   let fullContent = '';
+
+   while (true) {
+     const {done, value} = await reader.read();
+     if (done) break;
+
+     const chunk = decoder.decode(value, {stream: true});
+     buffer += chunk;
+
+     const lines = buffer.split('\n');
+     buffer = lines.pop() || '';
+
+     for (const line of lines) {
+       if (line.trim() === 'data: [DONE]') {
+         // 流式响应结束
+         console.log('Stream completed');
+         break;
+       }
+
+       if (line.startsWith('data: ')) {
+         // 提取内容（去掉'data: '前缀）
+         const content = line.substring(6);
+         fullContent += content;
+         // 更新UI显示
+         updateUI(fullContent);
+       }
+     }
+   }
+   ```
 
 > 注意：当 `first=true` 时，会自动创建新会话并流式发送消息，此时 `sessionId` 参数可以不传。
 
@@ -556,6 +621,9 @@ data: [DONE]
    - 超时时间设置为3分钟
    - 建议客户端实现重连机制
    - 建议在弱网环境下降级使用普通接口
+   - **聊天流式接口**(`/chat/stream`)和**3D重建事件流接口**(`/api/reconstruction/events/{taskId}`)使用不同的SSE格式：
+     - 聊天接口使用简化的SSE格式，只有`data:`字段，内容是纯文本
+     - 3D重建接口使用标准SSE格式，包含`event:`、`id:`和`data:`字段，`data:`字段内容是JSON格式
 
 ## 5. 图片资源接口
 
@@ -1111,6 +1179,7 @@ data: [DONE]
   - 当任务完成或失败时，服务器会自动关闭连接
   - 客户端可以根据status事件中的状态来判断任务是否完成
   - 如果任务已经有状态或结果文件，连接建立后会立即发送相应事件
+  - **注意**：与聊天流式接口不同，这个接口使用标准SSE格式，包含event、id和data字段，data字段中的内容是JSON格式
 
 ### 7.4 获取任务状态
 - 请求路径: `/api/reconstruction/status/{taskId}`

@@ -1,10 +1,15 @@
-import axios from 'axios'
 import { apiClient } from './apiClient'
 
-// API URL已经在apiClient中设置为'/api'，这里不需要重复定义
-const API_URL = ''
+/**
+ * 聊天API服务
+ * 提供与后端聊天相关API的交互功能
+ */
 
-// 创建会话
+/**
+ * 创建新的对话会话
+ * @param {string} sessionName - 会话名称
+ * @returns {Promise<Object>} - 创建的会话对象
+ */
 export const createSession = async (sessionName) => {
   try {
     const response = await apiClient.post(`/chat/session?sessionName=${encodeURIComponent(sessionName)}`)
@@ -15,7 +20,10 @@ export const createSession = async (sessionName) => {
   }
 }
 
-// 获取会话列表
+/**
+ * 获取用户的所有会话列表
+ * @returns {Promise<Object>} - 包含会话列表的响应
+ */
 export const listSessions = async () => {
   try {
     const response = await apiClient.get('/chat/session/list')
@@ -26,12 +34,15 @@ export const listSessions = async () => {
   }
 }
 
-// 获取会话消息列表
+/**
+ * 获取指定会话的消息历史
+ * @param {string} sessionId - 会话ID
+ * @returns {Promise<Object>} - 包含消息列表的响应
+ */
 export const listMessages = async (sessionId) => {
   try {
-    console.log('发送获取消息列表请求, sessionId:', sessionId)
+    console.log('获取会话消息, sessionId:', sessionId)
     const response = await apiClient.get(`/chat/message/${sessionId}`)
-    console.log('获取消息列表响应:', response.data)
     return response.data
   } catch (error) {
     console.error('获取消息列表失败:', error)
@@ -47,7 +58,11 @@ export const listMessages = async (sessionId) => {
   }
 }
 
-// 删除会话
+/**
+ * 删除指定的会话
+ * @param {string} sessionId - 要删除的会话ID
+ * @returns {Promise<Object>} - 删除结果
+ */
 export const deleteSession = async (sessionId) => {
   try {
     const response = await apiClient.delete(`/chat/session/${sessionId}`)
@@ -58,7 +73,11 @@ export const deleteSession = async (sessionId) => {
   }
 }
 
-// 删除消息
+/**
+ * 删除指定的消息
+ * @param {string} messageId - 要删除的消息ID
+ * @returns {Promise<Object>} - 删除结果
+ */
 export const deleteMessage = async (messageId) => {
   try {
     const response = await apiClient.delete(`/chat/message/${messageId}`)
@@ -69,7 +88,14 @@ export const deleteMessage = async (messageId) => {
   }
 }
 
-// 发送消息
+/**
+ * 发送消息并获取AI回复
+ * @param {string} content - 消息内容
+ * @param {Object} options - 选项
+ * @param {string} [options.sessionId] - 会话ID，如果不提供则自动创建新会话
+ * @param {boolean} [options.first=false] - 是否是首次消息
+ * @returns {Promise<Object>} - AI回复
+ */
 export const sendMessage = async (content, options = {}) => {
   try {
     const { sessionId, first = false } = options
@@ -93,10 +119,21 @@ export const sendMessage = async (content, options = {}) => {
   }
 }
 
-// 流式发送消息
+/**
+ * 流式发送消息并获取AI实时回复
+ * @param {string} content - 消息内容
+ * @param {Object} options - 选项
+ * @param {string} [options.sessionId] - 会话ID，如果不提供则自动创建新会话
+ * @param {boolean} [options.first=false] - 是否是首次消息
+ * @param {Object} callbacks - 回调函数
+ * @param {Function} callbacks.onMessage - 收到消息块时的回调
+ * @param {Function} callbacks.onDone - 流式响应完成时的回调
+ * @param {Function} callbacks.onError - 发生错误时的回调
+ */
 export const streamChat = async (content, options = {}, callbacks = {}) => {
   try {
     const { sessionId, first = false } = options
+    const { onMessage, onDone, onError } = callbacks
 
     // 准备请求体
     const requestBody = {
@@ -109,7 +146,10 @@ export const streamChat = async (content, options = {}, callbacks = {}) => {
       requestBody.sessionId = sessionId
     }
 
+    // 构建完整的URL
     const url = `/api/chat/stream`
+
+    console.debug('发送流式请求:', { url, requestBody })
 
     // 使用fetch API进行流式请求
     const response = await fetch(url, {
@@ -122,80 +162,88 @@ export const streamChat = async (content, options = {}, callbacks = {}) => {
     })
 
     if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.message || '请求失败')
+      const errorText = await response.text()
+      let errorMessage = '请求失败'
+      try {
+        const errorData = JSON.parse(errorText)
+        errorMessage = errorData.message || errorMessage
+      } catch (e) {
+        errorMessage = errorText || errorMessage
+      }
+      throw new Error(errorMessage)
     }
 
-    // 获取响应流
-    const reader = response.body.getReader()
-    const decoder = new TextDecoder('utf-8')
+    console.debug('流式请求成功，开始处理响应')
 
-    // 处理流式响应
-    while (true) {
-      const { done, value } = await reader.read()
+    // 使用原生 EventSource 处理 SSE
+    if (window.EventSource && false) { // 暂时禁用EventSource方式，使用手动解析
+      // 这里的代码保留作为参考，但不使用
+      // EventSource 方式需要后端支持正确的 SSE 格式
+    } else {
+      // 手动解析 SSE 流
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder('utf-8')
+      let buffer = ''
 
-      if (done) {
-        callbacks.onDone && callbacks.onDone()
-        break
-      }
+      // 处理流式响应
+      while (true) {
+        const { done, value } = await reader.read()
 
-      // 解码二进制数据
-      const chunk = decoder.decode(value, { stream: true })
-      console.log('收到原始数据块:', chunk)
+        // 如果数据流结束
+        if (done) {
+          console.debug('数据流结束')
+          if (onDone) onDone()
+          break
+        }
 
-      // 处理SSE格式的数据
-      if (chunk) {
-        try {
-          // 将数据块按行分割
-          const lines = chunk.split('\n')
+        // 解码收到的数据
+        const chunk = decoder.decode(value, { stream: true })
+        buffer += chunk
 
-          for (const line of lines) {
-            // 处理非空行
-            if (line.trim() !== '') {
-              console.log('处理行:', line)
+        // 处理SSE格式的数据
+        // 根据日志显示，实际数据格式是每行以data:开头
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || '' // 保留未完成的行
 
-              // 检查是否是SSE数据行
-              if (line.startsWith('data:')) {
-                // 提取data:后面的内容，允许data:后面有空格
-                let content = line.substring(5).trim()
+        for (const line of lines) {
+          if (!line.trim()) continue
 
-                // 检查是否是JSON格式
-                try {
-                  const jsonData = JSON.parse(content)
-                  if (jsonData.content) {
-                    content = jsonData.content
-                  }
-                } catch (e) {
-                  // 不是JSON格式，直接使用原始内容
-                  console.log('非JSON格式内容:', content)
-                }
-
-                // 检查是否是结束标记
-                if (content === '[DONE]') {
-                  console.log('收到流式响应结束标记')
-                  // 不将结束标记发送给回调
-                } else {
-                  console.log('发送内容给回调:', content)
-                  // 将内容发送给回调
-                  callbacks.onMessage && callbacks.onMessage(content)
-                }
-              } else {
-                // 非SSE格式，可能是直接的文本内容
-                console.log('非SSE格式数据:', line)
-                callbacks.onMessage && callbacks.onMessage(line)
-              }
-            }
+          // 如果是结束标记
+          if (line === 'data: [DONE]' || line === 'data:[DONE]') {
+            console.debug('收到结束标记 [DONE]')
+            if (onDone) onDone()
+            return
           }
-        } catch (parseError) {
-          console.error('解析流式数据错误:', parseError)
-          // 如果解析出错，尝试直接发送原始数据
-          callbacks.onMessage && callbacks.onMessage(chunk)
+
+          // 处理所有以data:开头的行，不管是否有空格
+          if (line.startsWith('data:')) {
+            // 提取内容（去掉'data:'前缀）
+            let content = ''
+
+            if (line.startsWith('data: ')) {
+              // 如果是'data: '格式，去掉前6个字符
+              content = line.substring(6)
+            } else {
+              // 如果是'data:'格式（没有空格），去掉前5个字符
+              content = line.substring(5)
+            }
+
+            console.debug('收到流式内容:', content)
+
+            // 如果内容不为空，发送给回调函数
+            if (content && onMessage) {
+              onMessage(content)
+            }
+          } else {
+            // 非数据行，可能是其他格式
+            console.debug('收到非数据行:', line)
+          }
         }
       }
     }
   } catch (error) {
-    console.error('流式聊天请求失败:', error)
-    callbacks.onError && callbacks.onError(error)
+    console.error('流式请求错误:', error)
+    if (onError) onError(error)
     throw error
   }
 }
