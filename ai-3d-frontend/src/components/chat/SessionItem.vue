@@ -2,7 +2,10 @@
   <div
     class="session-item"
     :class="{ 'active': isActive }"
+    :data-id="session.id"
     @click="$emit('select')"
+    @mouseenter="showActions = true"
+    @mouseleave="showActions = false"
   >
     <div class="session-info">
       <div class="session-icon">
@@ -105,7 +108,7 @@ const confirmDelete = () => {
 const startRename = () => {
   newName.value = props.session.sessionName
   isRenaming.value = true
-  
+
   // Focus the input after it's rendered
   nextTick(() => {
     renameInput.value?.focus()
@@ -123,33 +126,7 @@ const cancelRename = () => {
   isRenaming.value = false
 }
 
-// Show actions on hover
-onMounted(() => {
-  const element = document.querySelector(`.session-item[data-id="${props.session.id}"]`)
-  if (element) {
-    element.addEventListener('mouseenter', () => { showActions.value = true })
-    element.addEventListener('mouseleave', () => { showActions.value = false })
-  }
-})
-
-// Update data-id attribute when session changes
-watch(() => props.session.id, (newId, oldId) => {
-  if (oldId) {
-    const oldElement = document.querySelector(`.session-item[data-id="${oldId}"]`)
-    if (oldElement) {
-      oldElement.removeEventListener('mouseenter', () => { showActions.value = true })
-      oldElement.removeEventListener('mouseleave', () => { showActions.value = false })
-    }
-  }
-  
-  nextTick(() => {
-    const newElement = document.querySelector(`.session-item[data-id="${newId}"]`)
-    if (newElement) {
-      newElement.addEventListener('mouseenter', () => { showActions.value = true })
-      newElement.addEventListener('mouseleave', () => { showActions.value = false })
-    }
-  })
-})
+// 不再需要这些事件监听器，因为我们使用了Vue的@mouseenter和@mouseleave指令
 </script>
 
 <style scoped>
@@ -221,20 +198,32 @@ watch(() => props.session.id, (newId, oldId) => {
 
 .session-actions {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.25rem;
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 2px 4px;
+  border-radius: 4px;
+  backdrop-filter: blur(2px);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .action-btn {
-  background: none;
+  background: transparent;
   border: none;
   padding: 0.25rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
 }
 
 .action-btn:hover {
-  background-color: var(--bg-secondary);
+  background-color: rgba(0, 0, 0, 0.05);
+  color: var(--primary-color);
+}
+
+.action-btn.text-danger:hover {
+  color: var(--danger-color, #dc3545);
 }
 
 .rename-form {
@@ -250,16 +239,17 @@ watch(() => props.session.id, (newId, oldId) => {
   flex-direction: column;
   gap: 0.5rem;
   z-index: 10;
-  border: 1px solid var(--primary-color);
-  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
 }
 
 .rename-input {
-  padding: 0.5rem;
+  padding: 0.35rem 0.5rem;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-color);
   background-color: var(--bg-secondary);
   color: var(--text-primary);
+  font-size: 0.9rem;
 }
 
 .rename-input:focus {
@@ -274,11 +264,11 @@ watch(() => props.session.id, (newId, oldId) => {
 }
 
 .btn-cancel, .btn-save {
-  padding: 0.25rem 0.5rem;
+  padding: 0.2rem 0.4rem;
   border-radius: var(--radius-sm);
   border: none;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
 }
 
 .btn-cancel {

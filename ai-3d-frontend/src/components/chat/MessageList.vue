@@ -3,25 +3,26 @@
     <div v-if="messages.length === 0 && !isStreaming" class="empty-messages">
       <p class="text-center text-muted">开始发送消息，与AI助手对话</p>
     </div>
-    
+
     <template v-else>
       <!-- Date dividers and messages -->
       <template v-for="(message, index) in messages" :key="message.id">
         <!-- Date divider -->
-        <div 
-          v-if="shouldShowDateDivider(message, messages[index-1])" 
+        <div
+          v-if="shouldShowDateDivider(message, messages[index-1])"
           class="date-divider"
         >
           <span>{{ formatMessageDate(message.createTime) }}</span>
         </div>
-        
+
         <!-- Message -->
-        <Message 
-          :message="message" 
-          @delete="$emit('delete', message.id)" 
+        <Message
+          :message="message"
+          @delete="$emit('delete', message.id)"
+          @edit="(messageId, content) => $emit('edit', messageId, content)"
         />
       </template>
-      
+
       <!-- Streaming message -->
       <div v-if="isStreaming" class="streaming-container">
         <div class="message ai-message">
@@ -67,27 +68,27 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['delete'])
+const emit = defineEmits(['delete', 'edit'])
 
 // Format date for message groups
 const formatMessageDate = (dateString) => {
   if (!dateString) return ''
-  
+
   const date = new Date(dateString)
   const today = new Date()
   const yesterday = new Date(today)
   yesterday.setDate(yesterday.getDate() - 1)
-  
+
   // Check if date is today
   if (date.toDateString() === today.toDateString()) {
     return '今天'
   }
-  
+
   // Check if date is yesterday
   if (date.toDateString() === yesterday.toDateString()) {
     return '昨天'
   }
-  
+
   // Otherwise return formatted date
   return date.toLocaleDateString('zh-CN', {
     year: 'numeric',
@@ -107,10 +108,10 @@ const formatTime = (dateObj) => {
 // Determine if we should show a date divider
 const shouldShowDateDivider = (currentMessage, previousMessage) => {
   if (!previousMessage) return true
-  
+
   const currentDate = new Date(currentMessage.createTime).toDateString()
   const previousDate = new Date(previousMessage.createTime).toDateString()
-  
+
   return currentDate !== previousDate
 }
 </script>

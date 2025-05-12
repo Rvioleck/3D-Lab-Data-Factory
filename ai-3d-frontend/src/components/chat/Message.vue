@@ -12,7 +12,24 @@
           {{ formatTime(message.createTime) }}
         </span>
       </div>
+
+      <!-- 编辑模式 -->
+      <div v-if="isEditing" class="message-bubble edit-mode" :class="bubbleClass">
+        <textarea
+          ref="editTextarea"
+          v-model="editContent"
+          class="edit-textarea"
+          @keydown.esc="cancelEdit"
+        ></textarea>
+        <div class="edit-actions">
+          <button class="btn btn-sm btn-primary" @click="saveEdit">保存</button>
+          <button class="btn btn-sm btn-outline-secondary" @click="cancelEdit">取消</button>
+        </div>
+      </div>
+
+      <!-- 显示模式 -->
       <div
+        v-else
         class="message-bubble"
         :class="bubbleClass"
         @mouseenter="showActions = true"
@@ -20,6 +37,14 @@
       >
         <div class="message-text" v-html="formattedContent"></div>
         <div class="message-actions" v-if="showActions">
+          <button
+            v-if="isUser"
+            class="action-button"
+            @click="startEdit"
+            title="编辑消息"
+          >
+            <i class="bi bi-pencil"></i>
+          </button>
           <button class="action-button" @click="copyMessage" title="复制消息">
             <i class="bi" :class="copySuccess ? 'bi-check-lg text-success' : 'bi-clipboard'"></i>
           </button>
@@ -46,10 +71,12 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['delete'])
+const emit = defineEmits(['delete', 'edit'])
 
 const showActions = ref(false)
 const copySuccess = ref(false)
+const isEditing = ref(false)
+const editContent = ref('')
 
 // Configure marked options with syntax highlighting
 marked.setOptions({
@@ -160,6 +187,32 @@ const confirmDelete = () => {
   if (confirm('确定要删除这条消息吗？')) {
     emit('delete', props.message.id)
   }
+}
+
+// Edit message functions
+const startEdit = () => {
+  editContent.value = props.message.content
+  isEditing.value = true
+  // 在下一个 tick 后聚焦文本区域
+  setTimeout(() => {
+    const textarea = document.querySelector('.edit-textarea')
+    if (textarea) {
+      textarea.focus()
+      // 将光标放在文本末尾
+      textarea.selectionStart = textarea.selectionEnd = textarea.value.length
+    }
+  }, 50)
+}
+
+const saveEdit = () => {
+  if (editContent.value.trim() === '') return
+  emit('edit', props.message.id, editContent.value)
+  isEditing.value = false
+}
+
+const cancelEdit = () => {
+  isEditing.value = false
+  editContent.value = ''
 }
 </script>
 
@@ -276,51 +329,90 @@ const confirmDelete = () => {
 
 .message-actions {
   position: absolute;
-  top: -30px;
+  top: -24px;
   right: 0;
   display: flex;
-  gap: 8px;
-  background-color: var(--bg-primary);
-  padding: 4px 8px;
-  border-radius: 8px;
-  box-shadow: var(--shadow-md);
-  opacity: 0;
-  transform: translateY(10px);
-  animation: fadeIn 0.2s forwards;
+  gap: 4px;
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 2px 4px;
+  border-radius: 4px;
+  backdrop-filter: blur(2px);
+  z-index: 10;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .user-message .message-actions {
-  right: auto;
-  left: 0;
+  right: 0;
+  left: auto;
 }
 
 .action-button {
-  background: none;
+  background: transparent;
   border: none;
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
+  padding: 3px;
+  border-radius: 3px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
 }
 
 .action-button:hover {
-  background-color: var(--bg-secondary);
+  background-color: rgba(0, 0, 0, 0.05);
+  color: var(--primary-color);
+}
+
+.action-button.text-danger:hover {
+  color: var(--danger-color, #dc3545);
 }
 
 .copy-tooltip {
   position: absolute;
-  top: -25px;
+  top: -20px;
   right: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 1px 4px;
+  border-radius: 2px;
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+/* 编辑模式样式 */
+.edit-mode {
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+}
+
+.edit-textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 6px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  white-space: nowrap;
-  box-shadow: var(--shadow-sm);
+  font-family: inherit;
+  font-size: inherit;
+  line-height: 1.5;
+  resize: vertical;
+  margin-bottom: 6px;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.edit-actions button {
+  font-size: 0.85rem;
+  padding: 0.25rem 0.5rem;
 }
 
 :deep(.code-block) {

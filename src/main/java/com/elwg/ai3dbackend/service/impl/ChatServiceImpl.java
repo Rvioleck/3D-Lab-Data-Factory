@@ -1,6 +1,9 @@
 package com.elwg.ai3dbackend.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.elwg.ai3dbackend.constant.UserConstant;
+import com.elwg.ai3dbackend.exception.ErrorCode;
+import com.elwg.ai3dbackend.exception.ThrowUtils;
 import com.elwg.ai3dbackend.service.ChatService;
 import com.elwg.ai3dbackend.service.DeepSeekService;
 import com.elwg.ai3dbackend.mapper.ChatSessionMapper;
@@ -43,6 +46,9 @@ public class ChatServiceImpl implements ChatService {
     public ChatSession createSession(Long userId, String sessionName) {
         ChatSession session = new ChatSession();
         session.setUserId(userId);
+        if (sessionName == null || sessionName.isEmpty()) {
+            sessionName = "会话" + System.currentTimeMillis();
+        }
         session.setSessionName(sessionName);
         chatSessionMapper.insert(session);
         return session;
@@ -63,6 +69,16 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
+    public boolean updateSession(Long sessionId, String sessionName) {
+        // 创建 ChatSession 对象并设置会话 ID 和新的会话名称
+        ChatSession session = new ChatSession();
+        session.setId(sessionId);
+        session.setSessionName(sessionName);
+        // 调用 mapper 的 updateById 方法更新会话信息，根据更新结果返回布尔值
+        return chatSessionMapper.updateById(session) > 0;
+    }
+
+    @Override
     public List<ChatMessage> listSessionMessages(Long sessionId) {
         QueryWrapper<ChatMessage> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("sessionId", sessionId)
@@ -75,44 +91,38 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     public ChatMessage sendMessage(Long sessionId, Long userId, String message) {
-        // 在事务外部定义最终会话ID
-        final Long[] finalSessionId = new Long[1];
-
-        // 使用TransactionTemplate进行事务管理
-        transactionTemplate.execute(status -> {
+        // 1. 处理会话创建和保存用户消息（在事务中）
+        Long finalSessionId = transactionTemplate.execute(status -> {
             try {
-                // 0. 如果没有提供sessionId，则自动创建会话
-                if (sessionId == null) {
-                    if (userId == null) {
-                        throw new IllegalArgumentException("当sessionId为null时，必须提供userId");
-                    }
+                // 如果没有提供sessionId，则自动创建会话
+                Long actualSessionId = sessionId;
+                if (actualSessionId == null) {
+                    ThrowUtils.throwIf(userId == null, ErrorCode.NO_AUTH_ERROR);
                     // 从消息内容生成会话名称
                     String sessionName = generateSessionName(message);
                     // 创建新会话
-                    ChatSession session = createSession(userId, sessionName); // 数据库插入操作
-                    finalSessionId[0] = session.getId();
-                } else {
-                    finalSessionId[0] = sessionId;
+                    ChatSession session = createSession(userId, sessionName);
+                    actualSessionId = session.getId();  // 取数据库生成的ID
                 }
 
-                // 1. 保存用户消息
+                // 保存用户消息
                 ChatMessage userMessage = new ChatMessage();
-                userMessage.setSessionId(finalSessionId[0]);
-                userMessage.setRole("user");
+                userMessage.setSessionId(actualSessionId);
+                userMessage.setRole(UserConstant.USER_ROLE);
                 userMessage.setContent(message);
-                chatMessageMapper.insert(userMessage); // 数据库插入操作
-
-                return null; // 事务执行结果，这里不需要返回值
+                chatMessageMapper.insert(userMessage);
+                return actualSessionId; // 返回会话ID作为事务结果
             } catch (Exception e) {
+                // 如果发生异常，设置事务为回滚状态
                 log.error("Transaction failed in sendMessage", e);
                 status.setRollbackOnly();
                 throw e;
             }
         });
 
-        // 2. 获取历史消息 - 事务外部操作
+        // 2. 获取历史消息
         QueryWrapper<ChatMessage> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("sessionId", finalSessionId[0])
+        queryWrapper.eq("sessionId", finalSessionId)
                    .eq("isDelete", 0)
                    .orderByAsc("createTime");
         List<ChatMessage> historyMessages = chatMessageMapper.selectList(queryWrapper);
@@ -124,11 +134,11 @@ public class ChatServiceImpl implements ChatService {
         String aiResponse = deepSeekService.chatCompletion(messages);
 
         // 5. 异步保存AI回复
-        saveAiMessage(finalSessionId[0], aiResponse);
+        saveAiMessage(finalSessionId, aiResponse);
 
         // 6. 立即返回响应
         ChatMessage aiMessage = new ChatMessage();
-        aiMessage.setSessionId(finalSessionId[0]);
+        aiMessage.setSessionId(finalSessionId);
         aiMessage.setRole("assistant");
         aiMessage.setContent(aiResponse);
         return aiMessage;
@@ -137,14 +147,12 @@ public class ChatServiceImpl implements ChatService {
     @Override
     public void streamMessage(Long sessionId, Long userId, String message, SseEmitter emitter) {
         try {
-            // 在事务外部定义最终会话ID
-            final Long[] finalSessionId = new Long[1];
-
-            // 使用TransactionTemplate进行事务管理
-            transactionTemplate.execute(status -> {
+            // 1. 处理会话创建和保存用户消息（在事务中）
+            Long finalSessionId = transactionTemplate.execute(status -> {
                 try {
                     // 如果没有提供sessionId，则自动创建会话
-                    if (sessionId == null) {
+                    Long actualSessionId = sessionId;
+                    if (actualSessionId == null) {
                         if (userId == null) {
                             throw new IllegalArgumentException("当sessionId为null时，必须提供userId");
                         }
@@ -152,19 +160,17 @@ public class ChatServiceImpl implements ChatService {
                         String sessionName = generateSessionName(message);
                         // 创建新会话
                         ChatSession session = createSession(userId, sessionName);
-                        finalSessionId[0] = session.getId();
-                    } else {
-                        finalSessionId[0] = sessionId;
+                        actualSessionId = session.getId();
                     }
 
-                    // 1. 保存用户消息
+                    // 保存用户消息
                     ChatMessage userMessage = new ChatMessage();
-                    userMessage.setSessionId(finalSessionId[0]);
+                    userMessage.setSessionId(actualSessionId);
                     userMessage.setRole("user");
                     userMessage.setContent(message);
                     chatMessageMapper.insert(userMessage);
 
-                    return null; // 事务执行结果，这里不需要返回值
+                    return actualSessionId; // 返回会话ID作为事务结果
                 } catch (Exception e) {
                     log.error("Transaction failed in streamMessage", e);
                     status.setRollbackOnly();
@@ -174,7 +180,7 @@ public class ChatServiceImpl implements ChatService {
 
             // 2. 获取历史消息并限制长度 - 事务外部操作
             QueryWrapper<ChatMessage> queryWrapper = new QueryWrapper<>();
-            queryWrapper.eq("sessionId", finalSessionId[0])
+            queryWrapper.eq("sessionId", finalSessionId)
                        .eq("isDelete", 0)
                        .orderByDesc("createTime")
                        .last("LIMIT 20");
@@ -199,19 +205,19 @@ public class ChatServiceImpl implements ChatService {
                 @Override
                 public void complete() {
                     try {
-                        saveAiMessage(finalSessionId[0], fullResponse.toString());
+                        saveAiMessage(finalSessionId, fullResponse.toString());
                         // 发送结束标记
                         emitter.send("[DONE]");
                         emitter.complete();
                     } catch (Exception e) {
-                        log.error("Error completing stream for session: {}", finalSessionId[0], e);
+                        log.error("Error completing stream for session: {}", finalSessionId, e);
                         emitter.completeWithError(e);
                     }
                 }
 
                 @Override
                 public void completeWithError(@NotNull Throwable ex) {
-                    log.error("Stream error for session: {}", finalSessionId[0], ex);
+                    log.error("Stream error for session: {}", finalSessionId, ex);
                     emitter.completeWithError(ex);
                 }
             });

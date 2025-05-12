@@ -78,9 +78,7 @@ public interface ChatService {
 
     /**
      * 删除消息
-     * <p>
      * 删除指定的消息，可以是用户消息或AI回复。
-     * </p>
      *
      * @param messageId 消息ID
      * @param userId 用户ID（用于验证权限）
@@ -88,4 +86,13 @@ public interface ChatService {
      * @throws IllegalArgumentException 当消息不存在或用户无权限删除时抛出
      */
     boolean deleteMessage(Long messageId, Long userId);
+
+    /**
+     * 更新指定会话的名称
+     *
+     * @param sessionIdLong 要更新的会话的唯一标识符
+     * @param sessionName 会话的新名称
+     * @return 若会话名称更新成功返回 true，否则返回 false
+     */
+    boolean updateSession(Long sessionIdLong, String sessionName);
 }

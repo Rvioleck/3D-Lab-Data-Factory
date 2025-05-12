@@ -3,6 +3,8 @@ package com.elwg.ai3dbackend.controller;
 import com.elwg.ai3dbackend.annotation.AuthCheck;
 import com.elwg.ai3dbackend.common.BaseResponse;
 import com.elwg.ai3dbackend.common.ResultUtils;
+import com.elwg.ai3dbackend.exception.ErrorCode;
+import com.elwg.ai3dbackend.exception.ThrowUtils;
 import com.elwg.ai3dbackend.model.dto.ChatRequest;
 import com.elwg.ai3dbackend.model.entity.ChatSession;
 import com.elwg.ai3dbackend.model.entity.ChatMessage;
@@ -15,7 +17,6 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
-import java.util.ArrayList;
 import org.springframework.http.MediaType;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -30,7 +31,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @RestController
 @RequestMapping("/chat")
 @Tag(name = "AI对话接口", description = "提供AI对话相关的所有功能，包括会话管理和消息处理")
-@AuthCheck(mustRole = "admin") // 暂时只允许管理员访问聊天功能
+@AuthCheck(mustRole = "admin")
 public class ChatController {
 
     @Resource
@@ -41,10 +42,8 @@ public class ChatController {
 
     /**
      * 创建新的对话会话
-     * <p>
      * 根据提供的会话名称创建一个新的对话会话。会话与当前登录用户关联，
      * 用户可以在此会话中与AI进行多轮对话。创建成功后返回会话详细信息。
-     * </p>
      *
      * @param sessionName 会话名称，用于标识和区分不同的对话会话
      * @param request HTTP请求对象，用于获取当前登录用户信息
@@ -61,10 +60,8 @@ public class ChatController {
 
     /**
      * 获取当前用户的所有会话列表
-     * <p>
      * 获取当前登录用户创建的所有对话会话列表，按创建时间倒序排列（最新的会话排在前面）。
      * 每个会话包含会话ID、名称、创建时间等信息，可用于在用户界面上展示会话历史。
-     * </p>
      *
      * @param request HTTP请求对象，用于获取当前登录用户信息
      * @return 包含用户会话列表的响应对象，列表可能为空（如果用户没有创建过会话）
@@ -79,26 +76,19 @@ public class ChatController {
 
     /**
      * 获取指定会话的消息历史
-     * <p>
      * 根据提供的会话ID，获取该会话下的所有历史消息，按时间顺序排列（最早的消息排在前面）。
      * 消息包括用户发送的内容和AI的回复，每条消息包含角色标识（user/assistant）、内容、发送时间等信息。
      * 如果会话ID无效，将返回空列表。
-     * </p>
      *
      * @param sessionId 会话ID，用于标识要获取消息的会话
      * @return 包含会话消息历史的响应对象，按时间顺序排列的消息列表
      */
     @GetMapping("/message/{sessionId}")
     @Operation(summary = "获取会话消息历史", description = "获取指定会话的所有历史消息，按时间顺序排列")
-    public BaseResponse<List<ChatMessage>> listMessages(@PathVariable String sessionId) {
-        try {
-            Long sessionIdLong = Long.parseLong(sessionId);
-            List<ChatMessage> messages = chatService.listSessionMessages(sessionIdLong);
-            return ResultUtils.success(messages);
-        } catch (NumberFormatException e) {
-            // 如果转换失败，返回空列表
-            return ResultUtils.success(new ArrayList<>());
-        }
+    public BaseResponse<List<ChatMessage>> listMessages(@PathVariable Long sessionId) {
+        ThrowUtils.throwIf(sessionId == null || sessionId <= 0, ErrorCode.PARAMS_ERROR, "会话ID不合法");
+        List<ChatMessage> messages = chatService.listSessionMessages(sessionId);
+        return ResultUtils.success(messages);
     }
 
     /**
@@ -121,18 +111,15 @@ public class ChatController {
     public BaseResponse<ChatMessage> sendMessage(@RequestBody ChatRequest chatRequest, HttpServletRequest request) {
         // 获取用户ID
         Long userId = userService.getLoginUser(request).getId();
+        // 检查请求参数
+        ThrowUtils.throwIf(chatRequest == null ||
+                        chatRequest.getMessage() == null ||
+                        chatRequest.getMessage().trim().isEmpty(),
+                        ErrorCode.PARAMS_ERROR, "消息内容不能为空");
 
-        // 如果是首次消息，则sessionId传null，自动创建会话
-        Long sessionId = null;
-        if (!chatRequest.getFirst() && chatRequest.getSessionId() != null) {
-            // 如果不是首次消息，并且提供了sessionId
-            try {
-                sessionId = Long.parseLong(chatRequest.getSessionId());
-            } catch (NumberFormatException e) {
-                // 如果转换失败，则使用null，会自动创建新会话
-                sessionId = null;
-            }
-        }
+        // 如果有sessionId则直接设置，没有则是首次消息，则sessionId为null，自动创建会话，
+        Long sessionId = !chatRequest.getFirst() && chatRequest.getSessionId() != null ?
+                chatRequest.getSessionId(): null;
 
         // 调用统一的发送消息方法
         ChatMessage response = chatService.sendMessage(sessionId, userId, chatRequest.getMessage());
@@ -162,6 +149,19 @@ public class ChatController {
         }
     }
 
+    @PutMapping("/session/{sessionId}")
+    @Operation(summary = "更新会话", description = "更新会话名称")
+    public BaseResponse<Boolean> updateSession(@PathVariable String sessionId, @RequestBody String sessionName) {
+        try {
+            Long sessionIdLong = Long.parseLong(sessionId);
+            boolean result = chatService.updateSession(sessionIdLong, sessionName);
+            return ResultUtils.success(result);
+        } catch (NumberFormatException e) {
+            // 如果转换失败，返回失败
+            return ResultUtils.success(false);
+        }
+    }
+
     /**
      * 删除消息对（用户消息和对应的AI回复）
      * <p>
@@ -180,13 +180,12 @@ public class ChatController {
      */
     @DeleteMapping("/message/{messageId}")
     @Operation(summary = "删除消息", description = "删除指定的消息及其关联消息，需要用户拥有该消息的权限")
-    public BaseResponse<Boolean> deleteMessage(@PathVariable String messageId, HttpServletRequest request) {
+    public BaseResponse<Boolean> deleteMessage(@PathVariable Long messageId, HttpServletRequest request) {
         // 获取当前登录用户ID
         Long userId = userService.getLoginUser(request).getId();
 
         try {
-            Long messageIdLong = Long.parseLong(messageId);
-            boolean result = chatService.deleteMessage(messageIdLong, userId);
+            boolean result = chatService.deleteMessage(messageId, userId);
             return ResultUtils.success(result);
         } catch (NumberFormatException e) {
             // 如果转换失败，返回失败
@@ -230,7 +229,7 @@ public class ChatController {
         Long sessionId = null;
         if (!chatRequest.getFirst() && chatRequest.getSessionId() != null) {
             // 如果不是首次消息，并且提供了sessionId
-            sessionId = Long.parseLong(chatRequest.getSessionId());
+            sessionId = chatRequest.getSessionId();
         }
         // 5. 调用统一的流式消息方法
         chatService.streamMessage(sessionId, userId, chatRequest.getMessage(), emitter);

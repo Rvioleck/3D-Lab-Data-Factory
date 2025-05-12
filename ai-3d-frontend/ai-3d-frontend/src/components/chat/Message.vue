@@ -12,12 +12,12 @@
           {{ formatTime(message.createTime) }}
         </span>
       </div>
-      
+
       <!-- 编辑模式 -->
       <div v-if="isEditing" class="message-bubble edit-mode" :class="bubbleClass">
-        <textarea 
-          ref="editTextarea" 
-          v-model="editContent" 
+        <textarea
+          ref="editTextarea"
+          v-model="editContent"
           class="edit-textarea"
           @keydown.esc="cancelEdit"
         ></textarea>
@@ -26,7 +26,7 @@
           <button class="btn btn-sm btn-outline-secondary" @click="cancelEdit">取消</button>
         </div>
       </div>
-      
+
       <!-- 显示模式 -->
       <div
         v-else
@@ -36,11 +36,11 @@
         @mouseleave="showActions = false"
       >
         <div class="message-text" v-html="formattedContent"></div>
-        <div class="message-actions" v-if="showActions">
-          <button 
-            v-if="isUser" 
-            class="action-button" 
-            @click="startEdit" 
+        <div class="message-actions">
+          <button
+            v-if="isUser"
+            class="action-button"
+            @click="startEdit"
             title="编辑消息"
           >
             <i class="bi bi-pencil"></i>
@@ -329,38 +329,40 @@ const cancelEdit = () => {
 
 .message-actions {
   position: absolute;
-  top: -30px;
-  right: 0;
+  top: 5px;
+  right: 5px;
   display: flex;
   gap: 8px;
-  background-color: var(--bg-primary);
+  background-color: var(--bg-secondary);
   padding: 4px 8px;
   border-radius: 8px;
   box-shadow: var(--shadow-md);
-  opacity: 0;
-  transform: translateY(10px);
-  animation: fadeIn 0.2s forwards;
+  opacity: 1; /* 修改为始终可见 */
+  z-index: 10;
 }
 
 .user-message .message-actions {
-  right: auto;
-  left: 0;
+  right: 5px;
+  left: auto;
 }
 
 .action-button {
-  background: none;
-  border: none;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
+  margin: 0 2px;
 }
 
 .action-button:hover {
   background-color: var(--bg-secondary);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
 }
 
 .copy-tooltip {

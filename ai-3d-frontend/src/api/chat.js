@@ -89,6 +89,22 @@ export const deleteMessage = async (messageId) => {
 }
 
 /**
+ * 编辑消息内容
+ * @param {string} messageId - 要编辑的消息ID
+ * @param {string} content - 新的消息内容
+ * @returns {Promise<Object>} - 编辑结果
+ */
+export const editMessage = async (messageId, content) => {
+  try {
+    const response = await apiClient.put(`/chat/message/${messageId}`, { content })
+    return response.data
+  } catch (error) {
+    console.error('编辑消息失败:', error)
+    throw error.response?.data || { message: '网络错误，请稍后重试' }
+  }
+}
+
+/**
  * 发送消息并获取AI回复
  * @param {string} content - 消息内容
  * @param {Object} options - 选项
@@ -115,6 +131,34 @@ export const sendMessage = async (content, options = {}) => {
     return response.data
   } catch (error) {
     console.error('发送消息失败:', error)
+    throw error.response?.data || { message: '网络错误，请稍后重试' }
+  }
+}
+
+/**
+ * 流式发送消息并获取AI实时回复
+ * @param {string} content - 消息内容
+ * @param {Object} options - 选项
+ * @param {string} [options.sessionId] - 会话ID，如果不提供则自动创建新会话
+ * @param {boolean} [options.first=false] - 是否是首次消息
+ * @param {Object} callbacks - 回调函数
+ * @param {Function} callbacks.onMessage - 收到消息块时的回调
+ * @param {Function} callbacks.onDone - 流式响应完成时的回调
+ * @param {Function} callbacks.onError - 发生错误时的回调
+ */
+
+/**
+ * 重命名会话
+ * @param {string} sessionId - 会话ID
+ * @param {string} newName - 新的会话名称
+ * @returns {Promise<Object>} - 重命名结果
+ */
+export const renameSession = async (sessionId, newName) => {
+  try {
+    const response = await apiClient.put(`/chat/session/${sessionId}`, { sessionName: newName })
+    return response.data
+  } catch (error) {
+    console.error('重命名会话失败:', error)
     throw error.response?.data || { message: '网络错误，请稍后重试' }
   }
 }

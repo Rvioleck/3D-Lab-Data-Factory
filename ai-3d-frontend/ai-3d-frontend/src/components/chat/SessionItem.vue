@@ -18,7 +18,7 @@
         </div>
       </div>
     </div>
-    <div class="session-actions" v-if="showActions || isRenaming">
+    <div class="session-actions" v-if="true">
       <button
         v-if="!isRenaming"
         class="action-btn"
@@ -108,7 +108,7 @@ const confirmDelete = () => {
 const startRename = () => {
   newName.value = props.session.sessionName
   isRenaming.value = true
-  
+
   // Focus the input after it's rendered
   nextTick(() => {
     renameInput.value?.focus()
@@ -199,19 +199,25 @@ const cancelRename = () => {
 .session-actions {
   display: flex;
   gap: 0.5rem;
+  background-color: var(--bg-secondary);
+  padding: 4px;
+  border-radius: 4px;
 }
 
 .action-btn {
-  background: none;
-  border: none;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
   padding: 0.25rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
+  margin: 0 2px;
 }
 
 .action-btn:hover {
   background-color: var(--bg-secondary);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
 }
 
 .rename-form {

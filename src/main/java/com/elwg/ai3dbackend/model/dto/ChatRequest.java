@@ -26,7 +26,7 @@ public class ChatRequest implements Serializable {
      * </p>
      */
     @Schema(description = "会话ID", example = "1234567890123456789")
-    private String sessionId;
+    private Long sessionId;
 
     /**
      * 消息内容

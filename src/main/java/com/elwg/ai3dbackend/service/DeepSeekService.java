@@ -57,7 +57,7 @@ public class DeepSeekService {
     public String chatCompletion(List<Map<String, String>> messages) {
         log.info("DeepSeek API call with {} messages", messages.size());
 
-        // 合并连续的同类型消息
+        // 合并连续的同类型消息，确保API调用时消息格式正确
         List<Map<String, String>> mergedMessages = mergeConsecutiveMessages(messages);
         log.info("After merging, {} messages remain", mergedMessages.size());
 

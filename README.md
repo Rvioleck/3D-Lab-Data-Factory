@@ -75,6 +75,30 @@
 ## 项目结构
 
 ```
+├── ai-3d-frontend/
+│   ├── src/
+│   │   ├── App.vue
+│   │   ├── api/
+│   │   ├── assets/
+│   │   ├── components/
+│   │   ├── directives/
+│   │   ├── main.js
+│   │   ├── router/
+│   │   ├── services/
+│   │   ├── stores/
+│   │   ├── utils/
+│   │   └── views/
+│   ├── public/
+│   │   ├── favicon.ico
+│   │   └── images/
+│   ├── .gitignore
+│   ├── API.md
+│   ├── README.md
+│   ├── index.html
+│   ├── jsconfig.json
+│   ├── package-lock.json
+│   ├── package.json
+│   └── vite.config.js
 ├── src/
 │   ├── main/
 │   │   ├── java/
@@ -186,7 +210,6 @@
 ├── .idea/                               # IDE配置
 ├── target/                              # 编译输出
 ├── .gitignore                           # Git忽略文件
-├── API.md                               # API文档
 ├── 3D-Reconstruction.md                 # 3D重建模块设计文档
 ├── pom.xml                              # Maven配置
 └── README.md                            # 项目说明
@@ -194,7 +217,7 @@
 
 ## 安装与运行
 
-1. 确保已安装Java 21和Maven
+1. 确保已安装Java 17和Maven
 
 2. 配置数据库：
    - 创建MySQL数据库

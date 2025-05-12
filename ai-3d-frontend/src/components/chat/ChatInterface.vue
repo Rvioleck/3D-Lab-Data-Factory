@@ -8,10 +8,10 @@
           <i class="bi bi-plus-lg"></i> 新对话
         </button>
       </div>
-      
+
       <div class="sidebar-content">
-        <SessionList 
-          :sessions="sortedSessions" 
+        <SessionList
+          :sessions="sortedSessions"
           :currentSessionId="currentSessionId"
           @select="selectSession"
           @delete="deleteSession"
@@ -19,7 +19,7 @@
         />
       </div>
     </div>
-    
+
     <!-- Main chat area -->
     <div class="chat-main">
       <!-- Mobile sidebar toggle -->
@@ -29,14 +29,14 @@
           {{ showSidebar ? '关闭菜单' : '对话历史' }}
         </button>
       </div>
-      
+
       <!-- Welcome screen for new chat -->
       <div v-if="isNewChat && currentMessages.length === 0 && !isStreaming" class="welcome-screen">
         <div class="welcome-content">
           <i class="bi bi-robot text-primary"></i>
           <h2>欢迎使用AI助手</h2>
           <p class="text-muted">这是一个新对话，直接在下方输入框中发送消息，系统将自动创建新会话！</p>
-          
+
           <div class="suggestions">
             <div class="suggestion-title">您可以尝试这些问题：</div>
             <div class="suggestion-items">
@@ -53,7 +53,7 @@
           </div>
         </div>
       </div>
-      
+
       <!-- Session header -->
       <div v-else-if="currentSession" class="chat-header">
         <h5>{{ currentSession.sessionName }}</h5>
@@ -63,23 +63,24 @@
           </button>
         </div>
       </div>
-      
+
       <!-- Messages area -->
       <div class="chat-messages" ref="messagesContainer">
-        <MessageList 
-          :messages="currentMessages" 
+        <MessageList
+          :messages="currentMessages"
           :isStreaming="isStreaming"
           :streamingContent="streamingContent"
           @delete="deleteMessage"
+          @edit="editMessage"
         />
       </div>
-      
+
       <!-- Input area -->
       <div class="chat-input-container">
-        <MessageInput 
-          :disabled="isStreaming" 
+        <MessageInput
+          :disabled="isStreaming"
           :placeholder="inputPlaceholder"
-          @send="handleSendMessage" 
+          @send="handleSendMessage"
         />
       </div>
     </div>
@@ -141,7 +142,7 @@ const startNewChat = () => {
 
 const handleSendMessage = async (content) => {
   if (!content.trim()) return
-  
+
   try {
     await chatStore.sendMessage(content)
     scrollToBottom(true)
@@ -174,6 +175,14 @@ const deleteMessage = async (messageId) => {
   }
 }
 
+const editMessage = async (messageId, newContent) => {
+  try {
+    await chatStore.editMessage(messageId, newContent)
+  } catch (error) {
+    console.error('Failed to edit message:', error)
+  }
+}
+
 const toggleSidebar = () => {
   showSidebar.value = !showSidebar.value
 }
@@ -183,7 +192,7 @@ const scrollToBottom = async (force = false) => {
   if (messagesContainer.value) {
     const container = messagesContainer.value
     const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100
-    
+
     if (isAtBottom || force) {
       container.scrollTop = container.scrollHeight
     }
@@ -206,7 +215,7 @@ watch(() => streamingContent.value, () => {
 // Lifecycle hooks
 onMounted(async () => {
   await loadSessions()
-  
+
   // If no sessions, start a new chat
   if (sortedSessions.value.length === 0) {
     startNewChat()
@@ -337,7 +346,7 @@ onMounted(async () => {
   .chat-interface {
     grid-template-columns: 1fr;
   }
-  
+
   .chat-sidebar {
     position: fixed;
     top: 70px;
@@ -348,7 +357,7 @@ onMounted(async () => {
     transform: translateX(0);
     transition: transform 0.3s ease;
   }
-  
+
   .mobile-hidden {
     transform: translateX(-100%);
   }

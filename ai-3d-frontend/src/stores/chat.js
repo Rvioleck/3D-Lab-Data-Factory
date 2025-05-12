@@ -6,7 +6,9 @@ import {
   listMessages,
   deleteSession as apiDeleteSession,
   deleteMessage as apiDeleteMessage,
+  editMessage as apiEditMessage,
   sendMessage as apiSendMessage,
+  renameSession as apiRenameSession,
   streamChat
 } from '../api/chat'
 
@@ -309,16 +311,69 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   /**
+   * Edit a message
+   */
+  async function editMessage(messageId, newContent, sessionId = currentSessionId.value) {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const response = await apiEditMessage(messageId, newContent)
+
+      if (response.code === 0) {
+        // Update message in session
+        const targetSessionId = isNewChat.value ? 'temp-session' : sessionId
+
+        if (messages.value[targetSessionId]) {
+          const messageIndex = messages.value[targetSessionId].findIndex(m => m.id === messageId)
+
+          if (messageIndex !== -1) {
+            // Update the message content
+            messages.value[targetSessionId][messageIndex].content = newContent
+            // Update the message updateTime if available
+            if (response.data && response.data.updateTime) {
+              messages.value[targetSessionId][messageIndex].updateTime = response.data.updateTime
+            }
+          }
+        }
+
+        return true
+      } else {
+        throw new Error(response.message || 'Failed to edit message')
+      }
+    } catch (err) {
+      error.value = err.message || 'Failed to edit message'
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  /**
    * Rename a session
    */
   async function renameSession(sessionId, newName) {
-    // This would need a backend API endpoint to be implemented
-    // For now, just update the local state
-    const session = sessions.value.find(s => s.id === sessionId)
-    if (session) {
-      session.sessionName = newName
+    isLoading.value = true
+    error.value = null
+
+    try {
+      // 调用API重命名会话
+      const result = await apiRenameSession(sessionId, newName)
+
+      // 更新本地状态
+      const session = sessions.value.find(s => s.id === sessionId)
+      if (session) {
+        session.sessionName = newName
+      }
+
+      return result.data
+    } catch (err) {
+      console.error('重命名会话失败:', err)
+      error.value = err.message || '重命名会话失败'
+      throw err
+    } finally {
+      isLoading.value = false
     }
-    return true
   }
 
   return {
@@ -345,6 +400,7 @@ export const useChatStore = defineStore('chat', () => {
     sendMessage,
     deleteSession,
     deleteMessage,
+    editMessage,
     renameSession
   }
 })
