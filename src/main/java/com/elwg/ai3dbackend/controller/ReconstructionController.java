@@ -8,7 +8,6 @@ import com.elwg.ai3dbackend.exception.BusinessException;
 import com.elwg.ai3dbackend.exception.ErrorCode;
 import com.elwg.ai3dbackend.exception.ThrowUtils;
 import com.elwg.ai3dbackend.model.dto.reconstruction.ReconstructionTaskDTO;
-import com.elwg.ai3dbackend.model.dto.reconstruction.ReconstructionUploadResponse;
 import com.elwg.ai3dbackend.model.entity.Model;
 import com.elwg.ai3dbackend.model.entity.Picture;
 import com.elwg.ai3dbackend.model.entity.ReconstructionTask;
@@ -80,19 +79,17 @@ public class ReconstructionController {
      *
      * @param imageId 图片ID
      * @param request HTTP请求
-     * @return 任务ID和SSE URL
+     * @return 任务ID(可以拼接得到SSE URL)
      */
     @PostMapping("/create")
-    @Operation(summary = "创建3D重建任务", description = "使用已上传的图片创建3D重建任务，返回任务ID和SSE URL")
+    @Operation(summary = "创建3D重建任务", description = "使用已上传的图片创建3D重建任务，返回任务ID")
     @AuthCheck(mustRole = "admin")
-    public BaseResponse<ReconstructionUploadResponse> createReconstructionTask(
+    public BaseResponse<Long> createReconstructionTask(
             @RequestParam("imageId") Long imageId,
             HttpServletRequest request) {
-
         // 获取当前登录用户
         User loginUser = userService.getLoginUser(request);
         ThrowUtils.throwIf(loginUser == null, ErrorCode.NOT_LOGIN_ERROR);
-
         try {
             // 检查图片ID
             ThrowUtils.throwIf(imageId == null || imageId <= 0, ErrorCode.PARAMS_ERROR, "图片ID不合法");
@@ -126,10 +123,7 @@ public class ReconstructionController {
             // 异步处理重建任务
             processReconstructionTaskAsync(task.getId().toString(), imageData, callbackUrl);
 
-            // 构建响应对象
-            ReconstructionUploadResponse response = new ReconstructionUploadResponse();
-            response.setTaskId(task.getId());
-            return ResultUtils.success(response);
+            return ResultUtils.success(task.getId());
         } catch (Exception e) {
             log.error("Failed to create reconstruction task", e);
             ThrowUtils.throwIf(true, ErrorCode.SYSTEM_ERROR, "创建重建任务失败：" + e.getMessage());

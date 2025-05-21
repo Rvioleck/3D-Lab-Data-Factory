@@ -38,8 +38,6 @@ public class ReconstructionTaskServiceImpl extends ServiceImpl<ReconstructionTas
         task.setUserId(userId);
         task.setCreateTime(new Date());
         task.setUpdateTime(new Date());
-        task.setIsDelete(0);
-
         // 保存到数据库
         save(task);
         log.info("Created reconstruction task: {}", task.getId());

@@ -72,6 +72,6 @@ public class ReconstructionTask implements Serializable {
     /**
      * 是否删除(0-未删, 1-已删)
      */
-    @TableLogic
+    @TableLogic(value = "0", delval = "1")
     private Integer isDelete;
 }
